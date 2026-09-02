@@ -342,6 +342,18 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* next-up slider */
+  .nu-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+    scrollbar-width:none;margin-bottom:10px;}
+  .nu-track::-webkit-scrollbar{display:none;}
+  .nu-track > .nextup{flex:0 0 100%;scroll-snap-align:center;margin-bottom:0;}
+  .nu-dots{display:flex;justify-content:center;gap:6px;margin-bottom:14px;}
+  .nu-dots i{width:6px;height:6px;border-radius:50%;background:var(--line-strong);
+    transition:background .2s, width .2s;}
+  .nu-dots i.on{background:var(--gold);width:18px;border-radius:3px;}
+  .neutral{font-size:12.5px;color:var(--text-muted);background:var(--surface-2);
+    border-radius:12px;padding:11px 13px;margin-bottom:12px;line-height:1.5;}
+
   /* next up */
   .nextup{background:var(--ink,#12151c);background:#181b22;color:#f3f1ec;border-radius:20px;
     padding:18px 18px 16px;margin-bottom:12px;cursor:pointer;}
@@ -588,6 +600,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <div class="settings-list" id="settings-travellers" style="display:none;"></div>
       <div id="trav-add" style="display:none;margin-top:10px;">
         <div class="two-col">
+          <input type="text" id="set-newnat" placeholder="Nationality" style="flex:0 0 118px;">
           <input type="text" id="set-newtrav" placeholder="Name">
           <select id="set-newkind" style="flex:0 0 110px;">
             <option value="family">Family</option>
@@ -665,6 +678,15 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         Only these people can open this trip. Staff and guests can be added here without an app login.
       </p>
       <div id="tp-paperwork" style="display:none;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">DOES THIS TRIP NEED A VISA?</label>
+      <div class="status-row" id="tp-visa-row"></div>
+      <div id="tp-visa-overrides" style="margin-top:10px;"></div>
+      <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;">
+        Missing-visa warnings only appear when this says Required. Tap a name to set
+        someone differently &mdash; useful for staff travelling on another passport.
+      </p>
     </div>
     <div class="form-group">
       <label class="form-label">LANDMARK PHOTO</label>
@@ -939,6 +961,22 @@ let docType_ = 'visa';
 let docStatus_ = 'not_started';
 let pendingDocFile = null;
 let itemAirlineCode = '', itemFromCode = '', itemToCode = '';
+let tripVisaPolicy = 'unknown';
+let tripVisaOverrides = {};   // travellerId -> true/false, overriding the trip
+let nuIndex = 0;
+
+const VISA_POLICY = [
+  {id:'not_needed', label:'Not needed', tone:'ok'},
+  {id:'required',   label:'Required',   tone:'warn'},
+  {id:'unknown',    label:'Not decided',tone:'idle'},
+];
+
+/* Does this person need a visa for this trip? Declared, never guessed. */
+function visaNeeded(trip, travId){
+  const row = tripRoster.find(r=>r.trip_id===trip.id && r.traveller_id===travId);
+  if(row && (row.visa_required === true || row.visa_required === false)) return row.visa_required;
+  return trip.visa_policy === 'required';
+}
 let pendingFiles = [];    // files chosen before the item exists yet
 let tripTravSel = [];     // traveller ids selected in the trip modal
 let pendingUsername = null;
@@ -1531,7 +1569,7 @@ function homeAlerts(){
   upcomingTrips().forEach(t=>{
     const end = t.end_date || t.start_date;
     travellersOn(t.id).forEach(tr=>{
-      const g = paperworkGap(tr.id, end);
+      const g = paperworkGap(tr.id, end, visaNeeded(t, tr.id));
       if(g) out.push({ tone:'bad', trip:t.id,
         text:`${firstName(tr.name)} \u2014 ${g}`, where:t.title });
     });
@@ -1542,43 +1580,58 @@ function homeAlerts(){
   return out.slice(0, 5);
 }
 
+/* One card per upcoming trip, nearest first, so two trips leaving on the
+   same day both get seen. */
+function nextPerTrip(limit){
+  const now = `${todayISO()}T00:00`;
+  const out = [];
+  upcomingTrips().forEach(t=>{
+    const ev = items
+      .filter(i=> i.trip_id===t.id && i.start_date && forMe(i) && i.status!=='cancelled')
+      .filter(i=> `${i.start_date}T${i.start_time||'00:00'}` >= now)
+      .sort(itemSort)[0];
+    out.push({ trip:t, ev, when: ev ? `${ev.start_date}T${ev.start_time||'00:00'}`
+                                    : `${t.start_date||'9999'}T00:00` });
+  });
+  out.sort((a,b)=> a.when.localeCompare(b.when));
+  return out.slice(0, limit || 3);
+}
+
+function nextUpCard(entry){
+  const { trip, ev } = entry;
+  if(!ev){
+    const left = daysUntil(trip.start_date);
+    return `<div class="nextup quiet" onclick="openTrip('${trip.id}')">
+      <div class="nu-when">${escapeHtml(countdownLabel(left) || 'Dates to confirm')}</div>
+      <div class="nu-title">${escapeHtml(trip.title)}</div>
+      <div class="nu-sub" style="color:var(--text-faint);">Nothing booked for you yet</div>
+    </div>`;
+  }
+  const k = kindInfo(ev.kind);
+  const left = daysUntil(ev.start_date);
+  const when = left===0 ? 'Today' : left===1 ? 'Tomorrow' : countdownLabel(left);
+  const where = k.route ? [ev.from_place, ev.to_place].filter(Boolean).join(' \u2192 ') : (ev.place || '');
+  const sub = [where, ev.reference].filter(Boolean).join('  \u00b7  ');
+  return `<div class="nextup" onclick="openTrip('${trip.id}')">
+    <div class="nu-when">${escapeHtml(when)}${ev.start_time ? '  \u00b7  ' + fmtTime(ev.start_time) : ''}</div>
+    <div class="nu-title"><span>${k.ic}</span>${escapeHtml(ev.title || k.label)}</div>
+    ${sub ? `<div class="nu-sub">${escapeHtml(sub)}</div>` : ''}
+    <div class="nu-trip">${escapeHtml(trip.title)}</div>
+  </div>`;
+}
+
 function renderHome(){
   const wrap = document.getElementById('home-dial');
-  const next = nextEventsForMe(1)[0];
+  const cards = nextPerTrip(3);
   let html = '';
 
-  if(next){
-    const trip = trips.find(t=>t.id===next.trip_id);
-    const k = kindInfo(next.kind);
-    const left = daysUntil(next.start_date);
-    const when = left===0 ? 'Today' : left===1 ? 'Tomorrow' : countdownLabel(left);
-    const where = k.route
-      ? [next.from_place, next.to_place].filter(Boolean).join(' \u2192 ')
-      : (next.place || '');
-    const sub = [where, next.reference].filter(Boolean).join('  \u00b7  ');
-
-    // on the day itself, show the whole day rather than one line
-    let todayRows = '';
-    if(left === 0){
-      const rest = nextEventsForMe(6).filter(i=>i.id!==next.id && i.start_date===next.start_date);
-      if(rest.length) todayRows = `<div style="margin-top:13px;padding-top:11px;
-        border-top:1px solid rgba(255,255,255,0.12);">` + rest.map(i=>`
-        <div class="today-row"><span class="tt">${fmtTime(i.start_time) || '\u2014'}</span>
-          <span>${kindInfo(i.kind).ic} ${escapeHtml(i.title || kindInfo(i.kind).label)}</span></div>`
-        ).join('') + `</div>`;
-    }
-
-    html += `<div class="nextup" onclick="openTrip('${next.trip_id}')">
-      <div class="nu-when">${escapeHtml(when)}${next.start_time ? '  \u00b7  ' + fmtTime(next.start_time) : ''}</div>
-      <div class="nu-title"><span>${k.ic}</span>${escapeHtml(next.title || k.label)}</div>
-      ${sub ? `<div class="nu-sub">${escapeHtml(sub)}</div>` : ''}
-      ${todayRows}
-      <div class="nu-trip">${escapeHtml(trip ? trip.title : '')}</div>
-    </div>`;
+  if(cards.length){
+    html += `<div class="nu-track" id="nu-track">${cards.map(nextUpCard).join('')}</div>`;
+    if(cards.length > 1)
+      html += `<div class="nu-dots" id="nu-dots">${cards.map((_,i)=>
+        `<i class="${i===0?'on':''}"></i>`).join('')}</div>`;
   } else {
-    html += `<div class="nextup quiet"><div class="nu-title">${
-      upcomingTrips().length ? 'Nothing scheduled for you yet on the trips ahead.'
-                             : 'No trips planned.'}</div></div>`;
+    html += `<div class="nextup quiet"><div class="nu-title">No trips planned.</div></div>`;
   }
 
   const alerts = homeAlerts();
@@ -1592,6 +1645,14 @@ function renderHome(){
   }
 
   wrap.innerHTML = html;
+  const track = document.getElementById('nu-track');
+  if(track && cards.length > 1){
+    track.addEventListener('scroll', ()=>{
+      const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      const dots = document.getElementById('nu-dots');
+      if(dots) Array.from(dots.children).forEach((d,k)=>d.classList.toggle('on', k===i));
+    }, { passive:true });
+  }
   renderTripsList();
 }
 
@@ -1717,6 +1778,7 @@ function fmtMonthYear(iso){
 
 /* For one traveller on one trip: is their paperwork in order? */
 function travellerReadiness(travId, trip){
+  const needVisa = visaNeeded(trip, travId);
   const mine = documents.filter(d=>d.traveller_id===travId);
   const end = trip.end_date || trip.start_date;
   const bits = [];
@@ -1735,17 +1797,22 @@ function travellerReadiness(travId, trip){
     bits.push(`Passport to ${fmtMonthYear(passport.expiry_date)}`);
   }
 
-  const visas = mine.filter(d=>d.doc_type==='visa' &&
-    (d.trip_id===trip.id || (!d.trip_id && (!d.expiry_date || !end || d.expiry_date >= end))));
-  const approved = visas.filter(v=>v.status==='approved');
-  if(approved.length){
-    bits.push(`${approved[0].title || 'Visa'} approved`);
-  } else if(visas.length){
-    const v = visas[0];
-    bits.push(`${v.title || 'Visa'} ${docStatusInfo(v).label.toLowerCase()}`);
-    worse(v.status==='rejected' ? 'bad' : 'warn');
+  if(!needVisa){
+    // Don't list unrelated visas. A Schengen has nothing to say about Dubai.
+    if(trip.visa_policy === 'not_needed') bits.push('No visa needed');
   } else {
-    bits.push('No visa recorded'); worse('warn');
+    const visas = mine.filter(d=>d.doc_type==='visa' &&
+      (d.trip_id===trip.id || (!d.trip_id && (!d.expiry_date || !end || d.expiry_date >= end))));
+    const held = visas.filter(v=>docIsHeld(v));
+    if(held.length){
+      bits.push(`${held[0].title || 'Visa'} ${docDisplayStatus(held[0]).label.toLowerCase()}`);
+    } else if(visas.length){
+      const v = visas[0];
+      bits.push(`${v.title || 'Visa'} ${docDisplayStatus(v).label.toLowerCase()}`);
+      worse(v.status==='rejected' ? 'bad' : 'warn');
+    } else {
+      bits.push('No visa recorded'); worse('warn');
+    }
   }
   return { tone, line: bits.join(' \u00b7 ') };
 }
@@ -1764,7 +1831,11 @@ function renderReadiness(trip){
     : warn ? `<div class="banner">${warn} ${warn===1?'traveller has':'travellers have'} paperwork still to sort out.</div>`
     : '';
 
-  el.innerHTML = banner + `<div class="section-label"><div class="eyebrow">PAPERWORK</div></div>
+  const undecided = (trip.visa_policy || 'unknown') === 'unknown'
+    ? `<div class="neutral">Visa requirements for this trip have not been set.${
+        canEdit() ? ' Open the trip settings to say whether one is needed.' : ''}</div>` : '';
+
+  el.innerHTML = banner + undecided + `<div class="section-label"><div class="eyebrow">PAPERWORK</div></div>
     <div class="ready">${rows.map(({t,r})=>`
       <div class="ready-row">
         <span class="pip ${r.tone}"></span>
@@ -1914,7 +1985,8 @@ function renderSettings(){
           ${escapeHtml(tr.name)}
         </span>
         <span style="display:flex;align-items:center;gap:10px;">
-          <span class="sub">${tr.profile_id ? 'HAS LOGIN' : (tr.kind||'guest').toUpperCase()}</span>
+          <span class="sub">${escapeHtml((tr.nationality ? tr.nationality + ' \u00b7 ' : '') +
+            (tr.profile_id ? 'HAS LOGIN' : (tr.kind||'guest').toUpperCase()))}</span>
           ${tr.profile_id ? '' : `<span class="ax" style="color:var(--coral);cursor:pointer;" onclick="removeTraveller('${tr.id}')">&times;</span>`}
         </span>
       </div>`).join('') || `<div class="settings-item" style="cursor:default;"><span class="sub">No travellers yet</span></div>`;
@@ -1941,9 +2013,10 @@ async function addTravellerFromSettings(){
   const el = document.getElementById('set-newtrav');
   const name = el.value.trim();
   if(name.length < 2){ showToast('Type a name first'); return; }
-  const t = await createTraveller(name, document.getElementById('set-newkind').value);
+  const t = await createTraveller(name, document.getElementById('set-newkind').value,
+                                  document.getElementById('set-newnat').value.trim());
   if(!t) return;
-  el.value = '';
+  el.value = ''; document.getElementById('set-newnat').value = '';
   renderSettings();
   showToast(`${firstName(name)} added to the roster`);
 }
@@ -1977,6 +2050,13 @@ function openTripModal(id){
   document.getElementById('tp-hero').value = t?.hero_image_url || '';
   document.getElementById('tp-newtrav').value = '';
   tripTravSel = t ? travellersOn(t.id).map(x=>x.id) : [];
+  tripVisaPolicy = t?.visa_policy || 'unknown';
+  tripVisaOverrides = {};
+  if(t) tripRoster.filter(r=>r.trip_id===t.id).forEach(r=>{
+    if(r.visa_required === true || r.visa_required === false)
+      tripVisaOverrides[r.traveller_id] = r.visa_required;
+  });
+  buildVisaPolicy();
   buildTripTravellers();
   document.getElementById('tp-delete').style.display = t ? 'block' : 'none';
   document.getElementById('modal-trip').classList.add('active');
@@ -2000,11 +2080,12 @@ function buildTripTravellers(){
     };
     wrap.appendChild(c);
   });
+  buildVisaOverrides();
   showPaperworkWarning();
 }
 
 /* Flags travellers whose paperwork will not cover the dates in the form. */
-function paperworkGap(travId, endDate){
+function paperworkGap(travId, endDate, needVisa){
   const mine = documents.filter(d=>d.traveller_id===travId);
   const passport = mine.filter(d=>d.doc_type==='passport')
     .sort((a,b)=>(b.expiry_date||'').localeCompare(a.expiry_date||''))[0];
@@ -2012,6 +2093,7 @@ function paperworkGap(travId, endDate){
   if(endDate && passport.expiry_date && passport.expiry_date < endDate) return 'passport expires before the return';
   if(!passport.expiry_date) return 'passport has no expiry recorded';
 
+  if(!needVisa) return null;
   const visas = mine.filter(d=>d.doc_type==='visa' && docIsHeld(d) &&
     (!endDate || !d.expiry_date || d.expiry_date >= endDate));
   if(!visas.length) return 'no valid visa recorded';
@@ -2020,12 +2102,50 @@ function paperworkGap(travId, endDate){
 function showPaperworkWarning(){
   const box = document.getElementById('tp-paperwork');
   const endDate = document.getElementById('tp-end').value || document.getElementById('tp-start').value;
-  const gaps = tripTravSel.map(id=>({ id, g: paperworkGap(id, endDate) })).filter(x=>x.g);
+  const gaps = tripTravSel
+    .map(id=>({ id, g: paperworkGap(id, endDate, needsVisaInForm(id)) }))
+    .filter(x=>x.g);
   if(!gaps.length){ box.style.display='none'; box.innerHTML=''; return; }
   box.style.display = 'block';
   box.innerHTML = `<div class="warnline">${gaps.map(x=>
     `<strong>${escapeHtml(firstName(travName(x.id)))}</strong> \u2014 ${escapeHtml(x.g)}`).join('<br>')}
     <br><span style="opacity:0.75;">Worth checking before you book.</span></div>`;
+}
+
+function buildVisaPolicy(){
+  const row = document.getElementById('tp-visa-row');
+  row.innerHTML = '';
+  VISA_POLICY.forEach(p=>{
+    const b = document.createElement('div');
+    b.className = 'status-btn' + (tripVisaPolicy===p.id ? ' on-'+p.tone : '');
+    b.textContent = p.label;
+    b.onclick = ()=>{ tripVisaPolicy = p.id; buildVisaPolicy(); showPaperworkWarning(); };
+    row.appendChild(b);
+  });
+  buildVisaOverrides();
+}
+function needsVisaInForm(id){
+  const base = tripVisaPolicy === 'required';
+  return tripVisaOverrides[id] === undefined ? base : tripVisaOverrides[id];
+}
+function buildVisaOverrides(){
+  const wrap = document.getElementById('tp-visa-overrides');
+  if(!tripTravSel.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `<div class="chip-wrap">${tripTravSel.map(id=>{
+    const t = travFor(id); if(!t) return '';
+    const need = needsVisaInForm(id);
+    return `<div class="chip${need ? ' active' : ''}" onclick="toggleVisaOverride('${id}')">
+      <span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>
+      ${escapeHtml(firstName(t.name))}${t.nationality ? ` <span class="tag">${escapeHtml(t.nationality)}</span>` : ''}
+      ${need ? ' \u2022 visa' : ''}</div>`;
+  }).join('')}</div>`;
+}
+function toggleVisaOverride(id){
+  const base = tripVisaPolicy === 'required';
+  const next = !needsVisaInForm(id);
+  if(next === base) delete tripVisaOverrides[id]; else tripVisaOverrides[id] = next;
+  buildVisaOverrides();
+  showPaperworkWarning();
 }
 
 async function addTravellerInline(){
@@ -2040,10 +2160,10 @@ async function addTravellerInline(){
 }
 
 const TRAV_COLORS = ['#b8863f','#2f7a6b','#b84a34','#4c6fa0','#6b5b95','#7a8a4f','#a68f2e','#5b6b7a'];
-async function createTraveller(name, kind){
+async function createTraveller(name, kind, nationality){
   const color = TRAV_COLORS[travellers.length % TRAV_COLORS.length];
   const { data, error } = await sb.from('travellers')
-    .insert({ name, kind, color }).select().single();
+    .insert({ name, kind, color, nationality: nationality || null }).select().single();
   if(error){ console.error(error); showToast('Could not add that traveller'); return null; }
   travellers.push({ kind, name, ...data });
   travellers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -2059,6 +2179,7 @@ async function saveTrip(){
     end_date: document.getElementById('tp-end').value || null,
     notes: document.getElementById('tp-notes').value.trim() || null,
     hero_image_url: document.getElementById('tp-hero').value.trim() || null,
+    visa_policy: tripVisaPolicy,
   };
   if(!row.title){ showToast('Give the trip a name'); return; }
   if(tripTravSel.length===0){ showToast('Pick at least one traveller'); return; }
@@ -2077,7 +2198,10 @@ async function saveTrip(){
   // replace the trip roster with the current selection
   if(newId){
     await sb.from('trip_travellers').delete().eq('trip_id', newId);
-    const rows = tripTravSel.map(tid=>({ trip_id: newId, traveller_id: tid }));
+    const rows = tripTravSel.map(tid=>({
+      trip_id: newId, traveller_id: tid,
+      visa_required: tripVisaOverrides[tid] === undefined ? null : tripVisaOverrides[tid],
+    }));
     if(rows.length){
       const { error: rErr } = await sb.from('trip_travellers').insert(rows);
       if(rErr){ console.error(rErr); showToast('Trip saved, but the traveller list did not stick'); }
