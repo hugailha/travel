@@ -319,6 +319,28 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .settings-item:last-child{border-bottom:none;}
   .settings-item .sub{color:var(--text-faint);font-size:12px;font-family:'IBM Plex Mono',monospace;}
 
+  /* travellers, hero photo, attachments */
+  .chip-wrap{display:flex;flex-wrap:wrap;gap:7px;}
+  .hero{position:relative;border-radius:var(--radius);overflow:hidden;margin:2px 0 14px;background:var(--surface-2);}
+  .hero img{display:block;width:100%;height:152px;object-fit:cover;}
+  .hero .cap{position:absolute;left:0;right:0;bottom:0;padding:24px 14px 10px;
+    background:linear-gradient(to top, rgba(12,14,18,0.75), transparent);color:#fff;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;}
+  .trav-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  .trav-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);
+    border-radius:20px;padding:4px 11px 4px 4px;font-size:12px;color:var(--text);}
+  .trav-pill .dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:9px;font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
+  .trav-pill .tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-faint);letter-spacing:0.06em;}
+  .attach-row{display:flex;align-items:center;gap:10px;background:var(--surface-2);
+    border-radius:12px;padding:10px 12px;margin-bottom:7px;font-size:13px;}
+  .attach-row .an{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .attach-row .ax{color:var(--coral);font-size:16px;padding:0 4px;cursor:pointer;}
+  .attach-row.pending .an{color:#9c6a1f;}
+  .attach-add{display:block;text-align:center;border:1px dashed var(--line-strong);
+    border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
+  .attach-add:active{background:var(--surface-2);}
+
   .auth-choice{display:flex;flex-direction:column;gap:10px;margin-top:24px;width:100%;max-width:280px;}
   .auth-choice-btn{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:14px;color:var(--text);text-align:left;display:flex;align-items:center;gap:12px;}
   .auth-choice-btn .ic{font-size:18px;}
@@ -354,7 +376,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="auth-choice">
       <button class="auth-choice-btn primary" onclick="startPinFlow('login')">
         <span class="ic">&#128273;</span>
-        <span class="lbl">Enter my PIN<span class="sub">I've already set one up here</span></span>
+        <span class="lbl">Enter my PIN<span class="sub">I've used the family apps before</span></span>
       </button>
       <button class="auth-choice-btn" onclick="startPinFlow('create')">
         <span class="ic">&#10024;</span>
@@ -438,6 +460,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         <div class="db-title">Itinerary</div>
         <button class="icon-btn" id="trip-edit-btn" style="display:none;" onclick="openTripModal(activeTripId)">&#9998;</button>
       </div>
+      <div id="trip-hero"></div>
       <div class="trip-head" id="trip-head"></div>
       <div class="chip-row" id="trip-filter"></div>
       <div id="trip-body"></div>
@@ -461,8 +484,23 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         <div class="settings-item" onclick="startChangePin()"><span>Change PIN</span><span class="sub">&rsaquo;</span></div>
         <div class="settings-item" onclick="logout()"><span style="color:var(--coral);">Sign out</span><span class="sub">&rsaquo;</span></div>
       </div>
-      <div class="section-label"><div class="eyebrow">FAMILY</div></div>
+      <div class="section-label"><div class="eyebrow">APP ACCOUNTS</div></div>
       <div class="settings-list" id="settings-family"></div>
+      <div class="section-label" id="trav-label" style="display:none;">
+        <div class="eyebrow">TRAVELLER ROSTER</div>
+      </div>
+      <div class="settings-list" id="settings-travellers" style="display:none;"></div>
+      <div id="trav-add" style="display:none;margin-top:10px;">
+        <div class="two-col">
+          <input type="text" id="set-newtrav" placeholder="Name">
+          <select id="set-newkind" style="flex:0 0 110px;">
+            <option value="family">Family</option>
+            <option value="staff">Staff</option>
+            <option value="guest">Guest</option>
+          </select>
+        </div>
+        <button class="status-btn" style="width:100%;margin-top:8px;" onclick="addTravellerFromSettings()">Add traveller</button>
+      </div>
       <p style="font-size:11.5px;color:var(--text-faint);line-height:1.6;margin-top:14px;text-align:center;">
         Everyone sees the same trips. Only the trip organiser can add or change bookings.
       </p>
@@ -513,6 +551,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="form-group">
       <label class="form-label">NOTES</label>
       <textarea id="tp-notes" rows="3" placeholder="The shape of the trip, in a line or two."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">WHO'S GOING</label>
+      <div class="chip-wrap" id="tp-travellers"></div>
+      <div class="two-col" style="margin-top:10px;">
+        <input type="text" id="tp-newtrav" placeholder="Add someone not on the list">
+        <button class="status-btn" style="flex:0 0 92px;" onclick="addTravellerInline()">Add</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;">
+        Only these people can open this trip. Staff and guests can be added here without an app login.
+      </p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">LANDMARK PHOTO</label>
+      <input type="text" id="tp-hero" placeholder="Leave blank and one will be looked up">
     </div>
     <button class="save-btn" id="tp-save" onclick="saveTrip()">Save trip</button>
     <button class="delete-btn" id="tp-delete" style="display:none;" onclick="deleteTrip()">Delete trip</button>
@@ -577,6 +630,12 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <label class="form-label">NOTES</label>
       <textarea id="it-notes" rows="3" placeholder="Where to meet, what to bring, anything they should know."></textarea>
     </div>
+    <div class="form-group" id="it-attach-group">
+      <label class="form-label">ATTACHED COPIES</label>
+      <div id="it-attach-list"></div>
+      <label class="attach-add" for="it-file">+ Attach a visa copy or document</label>
+      <input type="file" id="it-file" multiple accept="image/*,application/pdf" style="display:none;">
+    </div>
     <button class="save-btn" id="it-save" onclick="saveItem()">Save</button>
     <button class="delete-btn" id="it-delete" style="display:none;" onclick="deleteItem()">Remove</button>
     <div class="modal-close" onclick="closeModal('modal-item')">Cancel</div>
@@ -587,14 +646,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
 <script>
 /* ============================= CONFIG ============================= */
-/* This app runs on its OWN Supabase project. It shares nothing with the
-   family ledger — separate accounts, separate PINs, separate data.
-   Paste the two values from Supabase -> Project Settings -> API below. */
-const SUPABASE_URL = 'https://dhmuvplhynycpzzhidxb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRobXV2cGxoeW55Y3B6emhpZHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMzIxMDYsImV4cCI6MjEwMzkwODEwNn0.Z9j1gXC1hzv9gmvr2tNCfq7bu7EQk2c_JFaDwDSD-no';
-
-const CONFIGURED = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 60;
-const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL.replace(/\/$/,''), SUPABASE_ANON_KEY) : null;
+const SUPABASE_URL = 'https://vinjzkddtqfqnhqyitlg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpbmp6a2RkdHFmcW5ocXlpdGxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDI5NTksImV4cCI6MjEwMzY3ODk1OX0.Rx9_nEdYtp7eSBrhC5OUj43-dEUitmwN4sdhJ2EPXv4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FAMILY = [
   {username:'hesham', name:'Hesham Alhugail', role:'head', color:'#b8863f'},
@@ -603,6 +657,7 @@ const FAMILY = [
   {username:'aljoharah', name:'Aljoharah Alhugail', role:'member', color:'#4c6fa0'},
   {username:'saba', name:'Saba Alhugail', role:'member', color:'#6b5b95'},
   {username:'abdullah', name:'Abdullah Alhugail', role:'member', color:'#7a8a4f'},
+  {username:'secretary', name:'Family Secretary', role:'secretary', color:'#5b6b7a'},
 ];
 
 const KINDS = [
@@ -632,6 +687,11 @@ let currentUser = null;
 let profiles = [];
 let trips = [];
 let items = [];
+let travellers = [];      // everyone who can appear on a trip, app login or not
+let tripRoster = [];      // {trip_id, traveller_id}
+let attachments = [];
+let pendingFiles = [];    // files chosen before the item exists yet
+let tripTravSel = [];     // traveller ids selected in the trip modal
 let pendingUsername = null;
 let pinBuffer = '';
 let pinMode = 'login';
@@ -647,7 +707,7 @@ let itemWho = [];
 let pendingSignupEmail = null;
 let usernameEmailMap = {};
 
-function authPassword(username, pin){ return `${username}-${pin}-travel7secure`; }
+function authPassword(username, pin){ return `${username}-${pin}-ledger9secure`; }
 function familyOf(username){ return FAMILY.find(f=>f.username===username); }
 function initials(name){ return (name||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -657,7 +717,8 @@ function statusInfo(kind, id){
   const set = statusSet(kind);
   return set.find(s=>s.id===id) || set[0];
 }
-function canEdit(){ return currentUser && (currentUser.role==='head' || currentUser.role==='organiser'); }
+function canEdit(){ return currentUser && ['head','secretary','organiser'].includes(currentUser.role); }
+function roleLabel(r){ return r==='head' ? 'Head of the family' : r==='secretary' ? 'Secretary' : r==='organiser' ? 'Organiser' : 'Viewer'; }
 function profileFor(id){ return profiles.find(p=>p.id===id); }
 function colorFor(id){ const p = profileFor(id); return p ? (p.color||'#6b7280') : '#6b7280'; }
 function nameFor(id){ const p = profileFor(id); return p ? p.display_name : 'Someone'; }
@@ -679,21 +740,36 @@ function fmtTime(t){ return t ? String(t).slice(0,5) : ''; }
 function daysUntil(s){ const d=d0(s); if(!d) return null; const n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function itemSort(a,b){ return (`${a.start_date||'9999'}T${a.start_time||'99:99'}`).localeCompare(`${b.start_date||'9999'}T${b.start_time||'99:99'}`); }
-function forMe(it){ const w = it.member_ids || []; return w.length===0 || w.includes(currentUser.id); }
+function forMe(it){
+  const w = it.member_ids || [];
+  const mine = myTravellerId();
+  return w.length===0 || (mine && w.includes(mine));
+}
+function travFor(id){ return travellers.find(t=>t.id===id) || null; }
+function travName(id){ const t = travFor(id); return (t && t.name) || 'Someone'; }
+function firstName(n){ return String(n||'Someone').trim().split(/\s+/)[0]; }
+function travColor(id){ const t = travFor(id); return (t && t.color) || '#6b7280'; }
+function myTravellerId(){
+  const t = travellers.find(x=>x.profile_id===currentUser?.id);
+  return t ? t.id : null;
+}
+function travellersOn(tripId){
+  const ids = tripRoster.filter(r=>r.trip_id===tripId).map(r=>r.traveller_id);
+  return travellers.filter(t=>ids.includes(t.id));
+}
 function whoLabel(it){
   const w = it.member_ids || [];
-  if(w.length===0 || w.length===profiles.length) return 'Everyone';
-  return w.map(id=> (nameFor(id)||'').split(' ')[0]).join(', ');
+  const onTrip = travellersOn(it.trip_id).length;
+  if(w.length===0 || (onTrip && w.length>=onTrip)) return 'Everyone';
+  return w.map(id=> firstName(travName(id))).join(', ');
 }
 
 /* ============================= RECOVERY ============================= */
 let recoveryUsername = null, recoveryPinBuffer = '', recoveryMode = 'step1', recoveryTempPin = '';
 
-if(CONFIGURED){
-  sb.auth.onAuthStateChange((event, session) => {
-    if(event === 'PASSWORD_RECOVERY' && session){ showRecoveryScreen(session.user); }
-  });
-}
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'PASSWORD_RECOVERY' && session){ showRecoveryScreen(session.user); }
+});
 
 async function showRecoveryScreen(authUser){
   ['boot-loading','login-screen','auth-choice-screen','pin-screen','main-app','navbar'].forEach(id=>{
@@ -742,12 +818,6 @@ async function handleRecoveryComplete(){
 async function init(){
   buildPad('keypad', pinInput);
   buildKindGrid();
-  if(!CONFIGURED){
-    document.querySelector('.boot-spinner').style.display = 'none';
-    document.getElementById('boot-loading-text').innerHTML =
-      'Not connected yet.<br><br><span style="text-transform:none;letter-spacing:0;font-family:Inter,sans-serif;font-size:13px;color:var(--text-muted);line-height:1.6;">Open index.html, find SUPABASE_URL near the top of the script, and paste in your project URL and anon key.</span>';
-    return;
-  }
   try{
     const { data: { session } } = await sb.auth.getSession();
     if(session){ await enterAppFromSession(session.user); } else { showLoginScreen(); }
@@ -784,7 +854,7 @@ function renderLoginList(){
       <div class="avatar" style="background:${u.color}">${initials(u.name)}</div>
       <div class="member-info">
         <div class="name">${escapeHtml(u.name)}</div>
-        <div class="role">${u.role==='head' ? 'Trip organiser' : 'Family member'}</div>
+        <div class="role">${u.role==='head' ? 'Head of the family' : u.role==='secretary' ? 'Secretary' : 'Family member'}</div>
       </div>
       <div class="chevron">&rsaquo;</div>`;
     list.appendChild(row);
@@ -878,7 +948,7 @@ function updatePinUI(){
   const eyebrow = document.getElementById('pin-eyebrow');
   const hint = document.getElementById('pin-hint');
   if(pinMode==='login'){ eyebrow.textContent='ENTER PIN'; hint.textContent=''; }
-  else if(pinMode==='create-step1'){ eyebrow.textContent='CREATE PIN'; hint.textContent='Choose a 4-digit PIN for this app. It is separate from the family ledger.'; }
+  else if(pinMode==='create-step1'){ eyebrow.textContent='CREATE PIN'; hint.textContent='Choose a 4-digit PIN. If you already use the family ledger, use the same one.'; }
   else if(pinMode==='create-step2'){ eyebrow.textContent='CONFIRM'; hint.textContent='Enter the same PIN again to confirm.'; }
   else if(pinMode==='change-step1'){ eyebrow.textContent='NEW PIN'; hint.textContent='Choose a new 4-digit PIN.'; }
   else if(pinMode==='change-step2'){ eyebrow.textContent='CONFIRM'; hint.textContent='Enter the same new PIN again to confirm.'; }
@@ -1003,8 +1073,11 @@ async function enterAppFromSession(authUser){
     if(!profile) throw new Error('No profile could be found or created for this account.');
     currentUser = { id:profile.id, username:profile.username, name:profile.display_name, role:profile.role, color:profile.color };
     await loadProfiles();
+    await loadTravellers();
     await loadTrips();
+    await loadTripRoster();
     await loadItems();
+    await loadAttachments();
   }catch(e){
     console.error('enterAppFromSession failed:', e);
     document.getElementById('boot-loading').style.display='none';
@@ -1020,9 +1093,10 @@ async function enterAppFromSession(authUser){
   document.getElementById('home-add-trip').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('trip-edit-btn').style.display = canEdit() ? 'flex' : 'none';
   document.getElementById('tb-name').textContent = currentUser.name.split(' ')[0];
-  document.getElementById('tb-eyebrow').textContent = canEdit() ? 'TRIP ORGANISER' : 'WELCOME BACK';
+  document.getElementById('tb-eyebrow').textContent =
+    currentUser.role==='secretary' ? 'SECRETARY' : currentUser.role==='head' ? 'HEAD OF THE FAMILY' : 'WELCOME BACK';
   document.getElementById('set-name').textContent = currentUser.name;
-  document.getElementById('set-role').textContent = canEdit() ? 'Organiser' : 'Viewer';
+  document.getElementById('set-role').textContent = roleLabel(currentUser.role);
   switchTab('home');
 }
 
@@ -1040,9 +1114,24 @@ async function loadItems(){
   if(error){ console.error(error); items = []; return; }
   items = (data||[]).map(r=>({ ...r, member_ids: r.member_ids || [] }));
 }
+async function loadTravellers(){
+  const { data, error } = await sb.from('travellers').select('*').order('name');
+  if(error){ console.error(error); travellers = []; return; }
+  travellers = (data||[]).filter(t=>t.active !== false);
+}
+async function loadTripRoster(){
+  const { data, error } = await sb.from('trip_travellers').select('*');
+  if(error){ console.error(error); tripRoster = []; return; }
+  tripRoster = data || [];
+}
+async function loadAttachments(){
+  const { data, error } = await sb.from('attachments').select('*').order('created_at');
+  if(error){ console.error(error); attachments = []; return; }
+  attachments = data || [];
+}
 async function refreshInBackground(thenTab){
   try{
-    await loadTrips(); await loadItems();
+    await loadTrips(); await loadTripRoster(); await loadItems(); await loadAttachments();
     if(activeTab===thenTab){
       if(thenTab==='home') renderHome();
       if(thenTab==='trip') renderTrip();
@@ -1052,7 +1141,7 @@ async function refreshInBackground(thenTab){
 }
 function logout(){
   sb.auth.signOut();
-  currentUser=null; profiles=[]; trips=[]; items=[];
+  currentUser=null; profiles=[]; trips=[]; items=[]; travellers=[]; tripRoster=[]; attachments=[];
   document.getElementById('main-app').style.display='none';
   document.getElementById('navbar').style.display='none';
   showLoginScreen();
@@ -1206,7 +1295,13 @@ function renderTrip(){
   const head = document.getElementById('trip-head');
   const body = document.getElementById('trip-body');
   const filter = document.getElementById('trip-filter');
-  if(!trip){ head.innerHTML=''; body.innerHTML='<div class="empty-state">That trip is no longer available.</div>'; filter.innerHTML=''; return; }
+  if(!trip){
+    head.innerHTML=''; filter.innerHTML='';
+    document.getElementById('trip-hero').innerHTML='';
+    body.innerHTML='<div class="empty-state">That trip is no longer available.</div>';
+    return;
+  }
+  paintHero(trip);
 
   const days = daysUntil(trip.start_date);
   const route = [trip.origin, trip.destination].filter(Boolean).join(' \u2192 ');
@@ -1214,7 +1309,9 @@ function renderTrip(){
     <h1>${escapeHtml(trip.title||'Untitled trip')}</h1>
     ${route ? `<div class="th-route">${escapeHtml(route)}</div>` : ''}
     <div class="th-dates">${fmtRange(trip.start_date, trip.end_date)}${(days!==null&&days>=0)?` &middot; ${days===0?'LEAVING TODAY':days+' DAYS TO GO'}`:''}</div>
-    ${trip.notes ? `<div class="th-notes">${escapeHtml(trip.notes)}</div>` : ''}`;
+    ${trip.notes ? `<div class="th-notes">${escapeHtml(trip.notes)}</div>` : ''}
+    ${(()=>{ const on = travellersOn(trip.id); return on.length ? `<div class="trav-strip">${on.map(t=>`
+      <span class="trav-pill"><span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}</span>`).join('')}</div>` : ''; })()}`;
 
   filter.innerHTML = `
     <div class="chip ${tripFilterMine?'':'active'}" onclick="setTripFilter(false)">Everyone</div>
@@ -1287,6 +1384,8 @@ function docCardHtml(it){
     </div>
     <div class="doc-meta">${escapeHtml(whoLabel(it))}${trip?' &middot; '+escapeHtml(trip.title||''):''}${it.start_date?' &middot; '+fmtShort(it.start_date):''}${it.reference?' &middot; '+escapeHtml(it.reference):''}</div>
     ${it.notes?`<div class="doc-note">${escapeHtml(it.notes)}</div>`:''}
+    ${(()=>{ const fs = attachmentsFor(it.id); return fs.length ? `<div style="margin-top:9px;">${fs.map(a=>`
+      <span class="trav-pill" style="cursor:pointer;" onclick="event.stopPropagation();openAttachment('${a.id}')">\uD83D\uDCCE ${escapeHtml(a.label||'Document')}</span>`).join(' ')}</div>` : ''; })()}
   </div>`;
 }
 
@@ -1317,6 +1416,24 @@ function setDocsFilter(mine){ docsFilterMine = mine; renderDocs(); }
 
 /* ============================= SETTINGS ============================= */
 function renderSettings(){
+  const showRoster = canEdit();
+  ['trav-label','settings-travellers','trav-add'].forEach(id=>{
+    document.getElementById(id).style.display = showRoster ? 'block' : 'none';
+  });
+  if(showRoster){
+    const t = document.getElementById('settings-travellers');
+    t.innerHTML = travellers.map(tr=>`
+      <div class="settings-item" style="cursor:default;">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px;background:${tr.color||'#6b7280'}">${initials(tr.name)}</span>
+          ${escapeHtml(tr.name)}
+        </span>
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span class="sub">${tr.profile_id ? 'HAS LOGIN' : (tr.kind||'guest').toUpperCase()}</span>
+          ${tr.profile_id ? '' : `<span class="ax" style="color:var(--coral);cursor:pointer;" onclick="removeTraveller('${tr.id}')">&times;</span>`}
+        </span>
+      </div>`).join('') || `<div class="settings-item" style="cursor:default;"><span class="sub">No travellers yet</span></div>`;
+  }
   const el = document.getElementById('settings-family');
   el.innerHTML = profiles.map(p=>`
     <div class="settings-item" style="cursor:default;">
@@ -1324,8 +1441,33 @@ function renderSettings(){
         <span class="avatar" style="width:26px;height:26px;font-size:11px;background:${p.color||'#6b7280'}">${initials(p.display_name)}</span>
         ${escapeHtml(p.display_name)}
       </span>
-      <span class="sub">${p.role==='head'||p.role==='organiser'?'ORGANISER':'VIEWER'}</span>
+      <span class="sub">${roleLabel(p.role).toUpperCase()}</span>
     </div>`).join('') || `<div class="settings-item" style="cursor:default;"><span class="sub">No profiles loaded</span></div>`;
+}
+
+async function addTravellerFromSettings(){
+  const el = document.getElementById('set-newtrav');
+  const name = el.value.trim();
+  if(name.length < 2){ showToast('Type a name first'); return; }
+  const t = await createTraveller(name, document.getElementById('set-newkind').value);
+  if(!t) return;
+  el.value = '';
+  renderSettings();
+  showToast(`${firstName(name)} added to the roster`);
+}
+async function removeTraveller(id){
+  const t = travFor(id);
+  if(!t) return;
+  const trips_on = tripRoster.filter(r=>r.traveller_id===id).length;
+  const msg = trips_on
+    ? `${t.name} is on ${trips_on} trip(s). Remove them from the roster and those trips?`
+    : `Remove ${t.name} from the roster?`;
+  if(!confirm(msg)) return;
+  const { error } = await sb.from('travellers').delete().eq('id', id);
+  if(error){ console.error(error); showToast('Could not remove them'); return; }
+  await loadTravellers(); await loadTripRoster();
+  renderSettings();
+  showToast('Removed from the roster');
 }
 
 /* ============================= TRIP MODAL ============================= */
@@ -1340,8 +1482,54 @@ function openTripModal(id){
   document.getElementById('tp-start').value = t?.start_date || '';
   document.getElementById('tp-end').value = t?.end_date || '';
   document.getElementById('tp-notes').value = t?.notes || '';
+  document.getElementById('tp-hero').value = t?.hero_image_url || '';
+  document.getElementById('tp-newtrav').value = '';
+  tripTravSel = t ? travellersOn(t.id).map(x=>x.id) : travellers.filter(x=>x.kind==='family').map(x=>x.id);
+  buildTripTravellers();
   document.getElementById('tp-delete').style.display = t ? 'block' : 'none';
   document.getElementById('modal-trip').classList.add('active');
+}
+
+function buildTripTravellers(){
+  const wrap = document.getElementById('tp-travellers');
+  wrap.innerHTML = '';
+  if(!travellers.length){
+    wrap.innerHTML = '<span style="font-size:12.5px;color:var(--text-faint);">No travellers on the roster yet.</span>';
+    return;
+  }
+  travellers.forEach(t=>{
+    const on = tripTravSel.includes(t.id);
+    const c = document.createElement('div');
+    c.className = 'chip' + (on ? ' active' : '');
+    c.innerHTML = `<span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}`;
+    c.onclick = ()=>{
+      tripTravSel = on ? tripTravSel.filter(x=>x!==t.id) : [...tripTravSel, t.id];
+      buildTripTravellers();
+    };
+    wrap.appendChild(c);
+  });
+}
+
+async function addTravellerInline(){
+  const el = document.getElementById('tp-newtrav');
+  const name = el.value.trim();
+  if(name.length < 2){ showToast('Type a name first'); return; }
+  const t = await createTraveller(name, 'guest');
+  if(!t) return;
+  tripTravSel = [...tripTravSel, t.id];
+  el.value = '';
+  buildTripTravellers();
+}
+
+const TRAV_COLORS = ['#b8863f','#2f7a6b','#b84a34','#4c6fa0','#6b5b95','#7a8a4f','#a68f2e','#5b6b7a'];
+async function createTraveller(name, kind){
+  const color = TRAV_COLORS[travellers.length % TRAV_COLORS.length];
+  const { data, error } = await sb.from('travellers')
+    .insert({ name, kind, color }).select().single();
+  if(error){ console.error(error); showToast('Could not add that traveller'); return null; }
+  travellers.push({ kind, name, ...data });
+  travellers.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return data;
 }
 async function saveTrip(){
   const btn = document.getElementById('tp-save');
@@ -1352,8 +1540,10 @@ async function saveTrip(){
     start_date: document.getElementById('tp-start').value || null,
     end_date: document.getElementById('tp-end').value || null,
     notes: document.getElementById('tp-notes').value.trim() || null,
+    hero_image_url: document.getElementById('tp-hero').value.trim() || null,
   };
   if(!row.title){ showToast('Give the trip a name'); return; }
+  if(tripTravSel.length===0){ showToast('Pick at least one traveller'); return; }
   btn.disabled = true; btn.textContent = 'Saving...';
   let error, newId = editingTripId;
   if(editingTripId){
@@ -1365,7 +1555,17 @@ async function saveTrip(){
   }
   btn.disabled = false; btn.textContent = 'Save trip';
   if(error){ console.error(error); showToast('Could not save the trip'); return; }
-  await loadTrips();
+
+  // replace the trip roster with the current selection
+  if(newId){
+    await sb.from('trip_travellers').delete().eq('trip_id', newId);
+    const rows = tripTravSel.map(tid=>({ trip_id: newId, traveller_id: tid }));
+    if(rows.length){
+      const { error: rErr } = await sb.from('trip_travellers').insert(rows);
+      if(rErr){ console.error(rErr); showToast('Trip saved, but the traveller list did not stick'); }
+    }
+  }
+  await loadTrips(); await loadTripRoster();
   closeModal('modal-trip');
   showToast(editingTripId ? 'Trip updated' : 'Trip created');
   if(!editingTripId && newId){ openTrip(newId); } else { activeTab==='trip' ? renderTrip() : renderHome(); }
@@ -1424,18 +1624,25 @@ function buildStatusRow(){
 function buildWhoRow(){
   const row = document.getElementById('who-row');
   row.innerHTML = '';
+  const tripId = document.getElementById('it-trip').value;
+  const onTrip = travellersOn(tripId);
+  if(!onTrip.length){
+    row.innerHTML = '<span style="font-size:12.5px;color:var(--text-faint);">Add travellers to this trip first.</span>';
+    return;
+  }
+  itemWho = itemWho.filter(id=>onTrip.some(t=>t.id===id));
   const all = document.createElement('div');
-  all.className = 'chip' + (itemWho.length===profiles.length ? ' active' : '');
+  all.className = 'chip' + (itemWho.length===onTrip.length ? ' active' : '');
   all.textContent = 'Everyone';
-  all.onclick = ()=>{ itemWho = profiles.map(p=>p.id); buildWhoRow(); };
+  all.onclick = ()=>{ itemWho = onTrip.map(t=>t.id); buildWhoRow(); };
   row.appendChild(all);
-  profiles.forEach(p=>{
+  onTrip.forEach(t=>{
+    const on = itemWho.includes(t.id);
     const c = document.createElement('div');
-    const on = itemWho.includes(p.id);
-    c.className = 'chip' + (on && itemWho.length!==profiles.length ? ' active' : '');
-    c.innerHTML = `<span class="dot" style="background:${p.color||'#6b7280'}">${initials(p.display_name)}</span>${escapeHtml((p.display_name||'').split(' ')[0])}`;
+    c.className = 'chip' + (on && itemWho.length!==onTrip.length ? ' active' : '');
+    c.innerHTML = `<span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}`;
     c.onclick = ()=>{
-      itemWho = on ? itemWho.filter(x=>x!==p.id) : [...itemWho, p.id];
+      itemWho = on ? itemWho.filter(x=>x!==t.id) : [...itemWho, t.id];
       buildWhoRow();
     };
     row.appendChild(c);
@@ -1453,8 +1660,11 @@ function openItemModal(id, presetTripId){
 
   itemKind = it?.kind || 'flight';
   itemStatus = it?.status || (kindInfo(itemKind).doc ? 'not_started' : 'confirmed');
-  itemWho = it ? (it.member_ids||[]).slice() : profiles.map(p=>p.id);
-  if(itemWho.length===0) itemWho = profiles.map(p=>p.id);
+  const modalTrip = it ? it.trip_id : (presetTripId || activeTripId || trips[0]?.id || '');
+  const onTrip = travellersOn(modalTrip).map(t=>t.id);
+  itemWho = it ? (it.member_ids||[]).slice() : onTrip.slice();
+  if(itemWho.length===0) itemWho = onTrip.slice();
+  pendingFiles = [];
 
   document.getElementById('it-title').value = it?.title || '';
   document.getElementById('it-from').value = it?.from_place || '';
@@ -1470,6 +1680,8 @@ function openItemModal(id, presetTripId){
 
   setKind(itemKind);
   buildWhoRow();
+  renderAttachList();
+  sel.onchange = ()=>{ itemWho = travellersOn(sel.value).map(t=>t.id); buildWhoRow(); };
   document.getElementById('modal-item').classList.add('active');
 }
 async function saveItem(){
@@ -1478,7 +1690,8 @@ async function saveItem(){
   const title = document.getElementById('it-title').value.trim();
   if(!tripId){ showToast('Pick a trip first'); return; }
   if(!title){ showToast('Add a name so the family knows what this is'); return; }
-  const everyone = itemWho.length===profiles.length;
+  const onTrip = travellersOn(tripId).map(t=>t.id);
+  const everyone = onTrip.length>0 && itemWho.length===onTrip.length;
   const row = {
     trip_id: tripId,
     kind: itemKind,
@@ -1496,12 +1709,22 @@ async function saveItem(){
     notes: document.getElementById('it-notes').value.trim() || null,
   };
   btn.disabled = true; btn.textContent = 'Saving...';
-  let error;
+  let error, savedId = editingItemId;
   if(editingItemId){ ({ error } = await sb.from('trip_items').update(row).eq('id', editingItemId)); }
-  else { row.created_by = currentUser.id; ({ error } = await sb.from('trip_items').insert(row)); }
+  else {
+    row.created_by = currentUser.id;
+    const res = await sb.from('trip_items').insert(row).select().single();
+    error = res.error; savedId = res.data?.id;
+  }
+  if(error){ btn.disabled=false; btn.textContent='Save'; console.error(error); showToast('Could not save'); return; }
+
+  if(pendingFiles.length && savedId){
+    btn.textContent = 'Uploading...';
+    const failed = await uploadPending(tripId, savedId);
+    if(failed) showToast(`Saved, but ${failed} file(s) would not upload`);
+  }
   btn.disabled = false; btn.textContent = 'Save';
-  if(error){ console.error(error); showToast('Could not save'); return; }
-  await loadItems();
+  await loadItems(); await loadAttachments();
   closeModal('modal-item');
   showToast(editingItemId ? 'Updated' : 'Added to the trip');
   if(activeTab==='trip') renderTrip(); else if(activeTab==='docs') renderDocs(); else renderHome();
@@ -1517,6 +1740,104 @@ async function deleteItem(){
   if(activeTab==='trip') renderTrip(); else if(activeTab==='docs') renderDocs(); else renderHome();
 }
 
+/* ============================= ATTACHMENTS ============================= */
+function newId(){
+  try{ return crypto.randomUUID(); }
+  catch(e){ return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2,10); }
+}
+function safeName(n){ return (n||'file').replace(/[^A-Za-z0-9._-]/g,'_').slice(-60); }
+function prettySize(b){
+  if(!b && b!==0) return '';
+  return b < 1024*1024 ? Math.max(1, Math.round(b/1024)) + ' KB'
+                       : (b/1024/1024).toFixed(1) + ' MB';
+}
+function attachmentsFor(itemId){ return attachments.filter(a=>a.item_id===itemId); }
+
+function renderAttachList(){
+  const wrap = document.getElementById('it-attach-list');
+  const saved = editingItemId ? attachmentsFor(editingItemId) : [];
+  let html = saved.map(a=>`
+    <div class="attach-row">
+      <span>\uD83D\uDCCE</span>
+      <span class="an" onclick="openAttachment('${a.id}')">${escapeHtml(a.label||'Document')}</span>
+      <span style="color:var(--text-faint);font-size:11px;font-family:'IBM Plex Mono',monospace;">${prettySize(a.size_bytes)}</span>
+      <span class="ax" onclick="removeAttachment('${a.id}')">&times;</span>
+    </div>`).join('');
+  html += pendingFiles.map((f,i)=>`
+    <div class="attach-row pending">
+      <span>\u21E1</span>
+      <span class="an">${escapeHtml(f.name)}</span>
+      <span style="color:#9c6a1f;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
+      <span class="ax" onclick="dropPending(${i})">&times;</span>
+    </div>`).join('');
+  wrap.innerHTML = html;
+}
+function dropPending(i){ pendingFiles.splice(i,1); renderAttachList(); }
+
+async function uploadPending(tripId, itemId){
+  let failed = 0;
+  for(const f of pendingFiles){
+    const path = `${tripId}/${itemId}/${newId()}-${safeName(f.name)}`;
+    const { error: upErr } = await sb.storage.from('visas').upload(path, f, { upsert:false });
+    if(upErr){ console.error(upErr); failed++; continue; }
+    const { error: rowErr } = await sb.from('attachments').insert({
+      trip_id: tripId, item_id: itemId, label: f.name, storage_path: path,
+      mime: f.type || null, size_bytes: f.size, uploaded_by: currentUser.id
+    });
+    if(rowErr){ console.error(rowErr); failed++; }
+  }
+  pendingFiles = [];
+  return failed;
+}
+
+async function openAttachment(id){
+  const a = attachments.find(x=>x.id===id);
+  if(!a) return;
+  const { data, error } = await sb.storage.from('visas').createSignedUrl(a.storage_path, 300);
+  if(error || !data){ console.error(error); showToast('Could not open that file'); return; }
+  window.open(data.signedUrl, '_blank', 'noopener');
+}
+async function removeAttachment(id){
+  const a = attachments.find(x=>x.id===id);
+  if(!a) return;
+  if(!confirm('Remove this file?')) return;
+  await sb.storage.from('visas').remove([a.storage_path]);
+  const { error } = await sb.from('attachments').delete().eq('id', id);
+  if(error){ console.error(error); showToast('Could not remove it'); return; }
+  await loadAttachments();
+  renderAttachList();
+  if(activeTab==='trip') renderTrip();
+  showToast('File removed');
+}
+
+/* ============================= LANDMARK PHOTO ============================= */
+async function landmarkImage(place){
+  if(!place) return null;
+  const key = 'landmark:' + place.toLowerCase();
+  try{ const c = sessionStorage.getItem(key); if(c !== null) return c || null; }catch(e){}
+  try{
+    const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(place));
+    if(!r.ok) throw new Error('lookup failed');
+    const j = await r.json();
+    const url = (j.originalimage && j.originalimage.source) || (j.thumbnail && j.thumbnail.source) || '';
+    try{ sessionStorage.setItem(key, url); }catch(e){}
+    return url || null;
+  }catch(e){
+    try{ sessionStorage.setItem(key, ''); }catch(_){}
+    return null;
+  }
+}
+async function paintHero(trip){
+  const el = document.getElementById('trip-hero');
+  el.innerHTML = '';
+  const url = trip.hero_image_url || await landmarkImage(trip.destination || trip.title);
+  if(!url || activeTripId !== trip.id) return;
+  el.innerHTML = `<div class="hero">
+    <img src="${escapeHtml(url)}" alt="" onerror="this.closest('.hero').remove()">
+    <div class="cap">${escapeHtml(trip.destination || trip.title || '')}</div>
+  </div>`;
+}
+
 /* ============================= UTIL ============================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 function showToast(msg){
@@ -1525,6 +1846,15 @@ function showToast(msg){
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1800);
 }
+document.getElementById('it-file').addEventListener('change', e=>{
+  const picked = Array.from(e.target.files || []);
+  const tooBig = picked.filter(f=>f.size > 15*1024*1024);
+  if(tooBig.length) showToast('Files must be under 15 MB');
+  pendingFiles = pendingFiles.concat(picked.filter(f=>f.size <= 15*1024*1024));
+  e.target.value = '';
+  renderAttachList();
+});
+
 document.querySelectorAll('.modal-overlay').forEach(o=>{
   o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('active'); });
 });
