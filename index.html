@@ -342,6 +342,34 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* next up */
+  .nextup{background:var(--ink,#12151c);background:#181b22;color:#f3f1ec;border-radius:20px;
+    padding:18px 18px 16px;margin-bottom:12px;cursor:pointer;}
+  .nextup .nu-when{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:#b8863f;margin-bottom:9px;}
+  .nextup .nu-title{font-family:'Fraunces',serif;font-size:24px;line-height:1.15;
+    display:flex;align-items:center;gap:9px;}
+  .nextup .nu-sub{font-size:13px;color:#a9b0ba;margin-top:5px;}
+  .nextup .nu-trip{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;
+    text-transform:uppercase;color:#7c848f;margin-top:11px;padding-top:11px;
+    border-top:1px solid rgba(255,255,255,0.12);}
+  .nextup.quiet{background:var(--surface);color:var(--text);border:1px solid var(--line);}
+  .nextup.quiet .nu-title{font-size:17px;color:var(--text-muted);}
+  .today-row{display:flex;align-items:baseline;gap:11px;padding:7px 0;font-size:13px;color:#c8ced6;}
+  .today-row .tt{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#f3f1ec;min-width:44px;}
+  .alert-list{margin-bottom:14px;}
+  .alert{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:13px;
+    margin-bottom:7px;font-size:13px;line-height:1.45;cursor:pointer;
+    border:1px solid var(--gold);background:var(--gold-soft);color:#5f4512;}
+  .alert.bad{border-color:var(--coral);background:var(--coral-soft);color:#7d2f1e;}
+  .alert .ago{margin-left:auto;color:inherit;opacity:0.55;font-size:15px;}
+  .addbar{display:block;width:100%;text-align:center;border:1px dashed var(--line-strong);
+    border-radius:14px;padding:13px;font-size:13.5px;font-weight:600;color:var(--text-muted);
+    background:none;margin:12px 0 4px;}
+  .addbar:active{background:var(--surface-2);}
+  .warnline{font-size:12px;line-height:1.5;color:#7d2f1e;background:var(--coral-soft);
+    border:1px solid var(--coral);border-radius:11px;padding:9px 11px;margin-top:9px;}
+
   /* segmented tabs */
   .segbar{display:flex;gap:4px;background:var(--surface-2);border-radius:14px;padding:4px;margin:2px 0 16px;}
   .segbar button{flex:1;border:none;background:none;border-radius:11px;padding:9px 6px;
@@ -526,6 +554,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <div class="chip-row" id="trip-filter"></div>
       <div id="trip-ready"></div>
       <div id="trip-body"></div>
+      <button class="addbar" id="trip-add-booking" style="display:none;"
+              onclick="openItemModal(null, activeTripId)">+ Add a flight, stay or booking</button>
     </div>
 
     <!-- DOCUMENTS -->
@@ -588,9 +618,6 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <button class="nav-btn active" data-tab="home" onclick="switchTab('home')">
         <span class="ic">&#8962;</span>HOME
       </button>
-      <button class="nav-btn add-btn" id="nav-add" onclick="quickAdd()">
-        <span class="ic">+</span>&nbsp;
-      </button>
       <button class="nav-btn" data-tab="docs" onclick="switchTab('docs')">
         <span class="ic">&#9634;</span>DOCS
       </button>
@@ -637,6 +664,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;">
         Only these people can open this trip. Staff and guests can be added here without an app login.
       </p>
+      <div id="tp-paperwork" style="display:none;"></div>
     </div>
     <div class="form-group">
       <label class="form-label">LANDMARK PHOTO</label>
@@ -762,6 +790,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="form-group">
       <label class="form-label">STATUS</label>
       <div class="status-row" id="doc-status-row"></div>
+      <p id="dc-status-note" style="display:none;font-size:11.5px;color:var(--text-faint);
+         margin:8px 0 0;line-height:1.5;">Once an expiry date is set, the date decides the
+         status. Application stages only apply while it is still being applied for.</p>
     </div>
     <div class="form-group">
       <label class="form-label">LAST 4 OF THE NUMBER</label>
@@ -1341,7 +1372,6 @@ async function enterAppFromSession(authUser){
   document.getElementById('boot-loading').style.display='none';
   document.getElementById('main-app').style.display='block';
   document.getElementById('navbar').style.display='flex';
-  document.getElementById('nav-add').style.display = canEdit() ? 'flex' : 'none';
   document.getElementById('docs-add').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('home-add-trip').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('trip-edit-btn').style.display = canEdit() ? 'flex' : 'none';
@@ -1485,51 +1515,83 @@ function ringSvg(pct, color){
   </svg>`;
 }
 
+function nextEventsForMe(limit){
+  const now = `${todayISO()}T00:00`;
+  const live = new Set(trips.filter(t=>!isArchived(t)).map(t=>t.id));
+  return items
+    .filter(i=> i.start_date && live.has(i.trip_id) && forMe(i) && i.status!=='cancelled')
+    .filter(i=> `${i.start_date}T${i.start_time||'00:00'}` >= now)
+    .sort(itemSort)
+    .slice(0, limit || 1);
+}
+
+/* Anything worth knowing before opening a trip. Paperwork gaps first. */
+function homeAlerts(){
+  const out = [];
+  upcomingTrips().forEach(t=>{
+    const end = t.end_date || t.start_date;
+    travellersOn(t.id).forEach(tr=>{
+      const g = paperworkGap(tr.id, end);
+      if(g) out.push({ tone:'bad', trip:t.id,
+        text:`${firstName(tr.name)} \u2014 ${g}`, where:t.title });
+    });
+    const pending = tripItems(t.id).filter(i=>i.status==='pending').length;
+    if(pending) out.push({ tone:'warn', trip:t.id,
+      text:`${pending} booking${pending>1?'s':''} still to confirm`, where:t.title });
+  });
+  return out.slice(0, 5);
+}
+
 function renderHome(){
   const wrap = document.getElementById('home-dial');
-  const up = upcomingTrips();
-  const trip = up[0];
+  const next = nextEventsForMe(1)[0];
+  let html = '';
 
-  if(!trip){
-    wrap.innerHTML = `<div class="empty-state" style="margin-bottom:18px;">
-      No trips planned yet.${canEdit() ? '<br>Tap <strong>+</strong> to start one.' : '<br>The organiser will add one soon.'}
+  if(next){
+    const trip = trips.find(t=>t.id===next.trip_id);
+    const k = kindInfo(next.kind);
+    const left = daysUntil(next.start_date);
+    const when = left===0 ? 'Today' : left===1 ? 'Tomorrow' : countdownLabel(left);
+    const where = k.route
+      ? [next.from_place, next.to_place].filter(Boolean).join(' \u2192 ')
+      : (next.place || '');
+    const sub = [where, next.reference].filter(Boolean).join('  \u00b7  ');
+
+    // on the day itself, show the whole day rather than one line
+    let todayRows = '';
+    if(left === 0){
+      const rest = nextEventsForMe(6).filter(i=>i.id!==next.id && i.start_date===next.start_date);
+      if(rest.length) todayRows = `<div style="margin-top:13px;padding-top:11px;
+        border-top:1px solid rgba(255,255,255,0.12);">` + rest.map(i=>`
+        <div class="today-row"><span class="tt">${fmtTime(i.start_time) || '\u2014'}</span>
+          <span>${kindInfo(i.kind).ic} ${escapeHtml(i.title || kindInfo(i.kind).label)}</span></div>`
+        ).join('') + `</div>`;
+    }
+
+    html += `<div class="nextup" onclick="openTrip('${next.trip_id}')">
+      <div class="nu-when">${escapeHtml(when)}${next.start_time ? '  \u00b7  ' + fmtTime(next.start_time) : ''}</div>
+      <div class="nu-title"><span>${k.ic}</span>${escapeHtml(next.title || k.label)}</div>
+      ${sub ? `<div class="nu-sub">${escapeHtml(sub)}</div>` : ''}
+      ${todayRows}
+      <div class="nu-trip">${escapeHtml(trip ? trip.title : '')}</div>
     </div>`;
   } else {
-    const r = readiness(trip.id);
-    const days = daysUntil(trip.start_date);
-    const next = nextItemForMe();
-    const big = days===null ? '\u2014' : (days<0 ? '\u2708' : days <= 60 ? days : Math.round(days/30.44));
-    const unit = days===null ? 'dates to confirm'
-               : days<0 ? 'under way'
-               : days===0 ? 'leaving today'
-               : days<=60 ? (days===1 ? 'day to go' : 'days to go')
-               : (Math.round(days/30.44)===1 ? 'month to go' : 'months to go');
-    wrap.innerHTML = `
-      <div class="dial-card">
-        <div class="dial-trip-line">${escapeHtml(trip.title||'').toUpperCase()}</div>
-        <div class="dial-wrap">
-          ${ringSvg(r.pct, 'var(--gold)')}
-          <div class="dial-center">
-            <div class="big">${big}</div>
-            <div class="unit">${unit}</div>
-          </div>
-        </div>
-        <div class="dial-foot">
-          <div class="stat">
-            <div class="eyebrow">BOOKINGS</div>
-            <div class="val ${r.bookOk===r.bookTotal && r.bookTotal>0 ? 'ok':''}">${r.bookOk}/${r.bookTotal}</div>
-          </div>
-          <div class="stat">
-            <div class="eyebrow">DOCUMENTS</div>
-            <div class="val ${r.docTotal && r.docOk<r.docTotal ? 'warn' : (r.docTotal? 'ok':'')}">${r.docOk}/${r.docTotal}</div>
-          </div>
-        </div>
-        ${next ? `<div id="next-item-row" onclick="openTrip('${next.trip_id}')">
-          <div class="ni-label">${kindInfo(next.kind).ic}<span>${escapeHtml(next.title||kindInfo(next.kind).label)}</span></div>
-          <div class="ni-when">${fmtShort(next.start_date)}${next.start_time? ' &middot; '+fmtTime(next.start_time):''}</div>
-        </div>` : ''}
-      </div>`;
+    html += `<div class="nextup quiet"><div class="nu-title">${
+      upcomingTrips().length ? 'Nothing scheduled for you yet on the trips ahead.'
+                             : 'No trips planned.'}</div></div>`;
   }
+
+  const alerts = homeAlerts();
+  if(alerts.length){
+    html += `<div class="alert-list">` + alerts.map(a=>`
+      <div class="alert ${a.tone==='bad'?'bad':''}" onclick="openTrip('${a.trip}')">
+        <span>${a.tone==='bad' ? '\u26A0' : '\u25CB'}</span>
+        <span>${escapeHtml(a.text)}<br><span style="opacity:0.7;font-size:11.5px;">${escapeHtml(a.where)}</span></span>
+        <span class="ago">\u203a</span>
+      </div>`).join('') + `</div>`;
+  }
+
+  wrap.innerHTML = html;
   renderTripsList();
 }
 
@@ -1614,6 +1676,7 @@ function renderTrip(){
   }
   docs.sort((a,b)=> (travName(a.traveller_id)).localeCompare(travName(b.traveller_id)));
   renderReadiness(trip);
+  document.getElementById('trip-add-booking').style.display = canEdit() ? 'block' : 'none';
 
   let html = '';
   if(sched.length===0){
@@ -1738,19 +1801,23 @@ function addDays(iso, k){
   d.setDate(d.getDate() + k);
   return d.toISOString().slice(0,10);
 }
+/* A document with an expiry date is one you hold, so the date decides its
+   state. Application statuses only describe something still being applied
+   for, and disappear once it has been issued. */
 function docDisplayStatus(d){
   const t = docType(d.doc_type);
-  if(t.person){
-    if(!d.expiry_date) return { label:'No expiry', tone:'idle' };
+  if(d.status === 'rejected') return { label:'Rejected', tone:'bad' };
+  if(t.person || d.expiry_date){
+    if(!d.expiry_date) return { label:'No expiry recorded', tone:'idle' };
     const left = daysUntil(d.expiry_date);
     if(left < 0)   return { label:'Expired', tone:'bad' };
-    if(left < 183) return { label:'Expiring soon', tone:'warn' };
-    return { label:'Valid', tone:'ok' };
+    if(left < 183) return { label:'Expires ' + fmtMonthYear(d.expiry_date), tone:'warn' };
+    return { label:'Valid to ' + fmtMonthYear(d.expiry_date), tone:'ok' };
   }
-  const st = docStatusInfo(d);
-  if(st.id === 'approved' && d.expiry_date && daysUntil(d.expiry_date) < 0)
-    return { label:'Expired', tone:'bad' };
-  return st;
+  return docStatusInfo(d);
+}
+function docIsHeld(d){
+  return d.status !== 'rejected' && !!d.expiry_date && daysUntil(d.expiry_date) >= 0;
 }
 function docScopeLabel(d){
   if(!d.trip_id) return 'Held long term';
@@ -1813,21 +1880,21 @@ function renderDocs(){
     return st.tone === 'bad' || st.tone === 'warn';
   }).length;
 
-  const byTrav = {};
-  list.forEach(d=>{ (byTrav[d.traveller_id] = byTrav[d.traveller_id] || []).push(d); });
-  const order = travellers.filter(t=>byTrav[t.id]);
-
   const rank = { bad:0, warn:1, idle:2, ok:3 };
+  const heading = { passport:'PASSPORTS', visa:'VISAS', insurance:'INSURANCE',
+                    ticket:'TICKETS', id:'ID CARDS', other:'OTHER DOCUMENTS' };
+
   body.innerHTML =
     (needsWork ? `<div class="banner">${needsWork} ${needsWork===1?'document needs':'documents need'} attention \u2014 expiring, expired or not yet arranged.</div>` : '') +
-    order.map(t=>{
-      const docs = byTrav[t.id].slice().sort((a,b)=>{
+    DOC_TYPES.map(t=>{
+      const docs = list.filter(d=>d.doc_type === t.id).sort((a,b)=>{
         const ra = rank[docDisplayStatus(a).tone], rb = rank[docDisplayStatus(b).tone];
         if(ra !== rb) return ra - rb;
-        return (a.trip_id?1:0) - (b.trip_id?1:0);
+        return travName(a.traveller_id).localeCompare(travName(b.traveller_id));
       });
+      if(!docs.length) return '';
       return `<div class="section-label" style="margin-top:20px;">
-          <div class="eyebrow">${escapeHtml(t.name.toUpperCase())}</div>
+          <div class="eyebrow">${t.ic} &nbsp;${heading[t.id] || t.label.toUpperCase()}</div>
         </div>` + docs.map(d=>docCardHtml(d,false)).join('');
     }).join('');
 }
@@ -1855,7 +1922,7 @@ function renderSettings(){
   document.getElementById('set-archive-count').textContent =
     archivedTrips().length ? archivedTrips().length + ' \u203a' : 'None \u203a';
   const due = expiredFiles();
-  const dueCount = due.docs.length + due.atts.length;
+  const dueCount = due.docs.length + due.atts.length + expiredStaffDocs().length;
   document.getElementById('set-sweep').style.display = (canEdit() && dueCount) ? 'flex' : 'none';
   document.getElementById('set-sweep-count').textContent = dueCount ? dueCount + ' \u203a' : '';
 
@@ -1909,7 +1976,7 @@ function openTripModal(id){
   document.getElementById('tp-notes').value = t?.notes || '';
   document.getElementById('tp-hero').value = t?.hero_image_url || '';
   document.getElementById('tp-newtrav').value = '';
-  tripTravSel = t ? travellersOn(t.id).map(x=>x.id) : travellers.filter(x=>x.kind==='family').map(x=>x.id);
+  tripTravSel = t ? travellersOn(t.id).map(x=>x.id) : [];
   buildTripTravellers();
   document.getElementById('tp-delete').style.display = t ? 'block' : 'none';
   document.getElementById('modal-trip').classList.add('active');
@@ -1933,6 +2000,32 @@ function buildTripTravellers(){
     };
     wrap.appendChild(c);
   });
+  showPaperworkWarning();
+}
+
+/* Flags travellers whose paperwork will not cover the dates in the form. */
+function paperworkGap(travId, endDate){
+  const mine = documents.filter(d=>d.traveller_id===travId);
+  const passport = mine.filter(d=>d.doc_type==='passport')
+    .sort((a,b)=>(b.expiry_date||'').localeCompare(a.expiry_date||''))[0];
+  if(!passport) return 'no passport recorded';
+  if(endDate && passport.expiry_date && passport.expiry_date < endDate) return 'passport expires before the return';
+  if(!passport.expiry_date) return 'passport has no expiry recorded';
+
+  const visas = mine.filter(d=>d.doc_type==='visa' && docIsHeld(d) &&
+    (!endDate || !d.expiry_date || d.expiry_date >= endDate));
+  if(!visas.length) return 'no valid visa recorded';
+  return null;
+}
+function showPaperworkWarning(){
+  const box = document.getElementById('tp-paperwork');
+  const endDate = document.getElementById('tp-end').value || document.getElementById('tp-start').value;
+  const gaps = tripTravSel.map(id=>({ id, g: paperworkGap(id, endDate) })).filter(x=>x.g);
+  if(!gaps.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div class="warnline">${gaps.map(x=>
+    `<strong>${escapeHtml(firstName(travName(x.id)))}</strong> \u2014 ${escapeHtml(x.g)}`).join('<br>')}
+    <br><span style="opacity:0.75;">Worth checking before you book.</span></div>`;
 }
 
 async function addTravellerInline(){
@@ -2204,7 +2297,7 @@ function setDocTypeSel(id){
 
   document.getElementById('dc-file-group').style.display   = t.file ? 'block' : 'none';
   document.getElementById('dc-nofile-note').style.display  = t.file ? 'none' : 'block';
-  document.getElementById('doc-status-row').parentElement.style.display = t.person ? 'none' : 'block';
+  updateDocStatusVisibility();
   document.getElementById('dc-title-label').textContent =
     t.person ? 'DESCRIPTION' : 'WHICH DOCUMENT';
   document.getElementById('dc-title').placeholder =
@@ -2217,6 +2310,14 @@ function setDocTypeSel(id){
   buildDocStatusRow();
   updateDocLevelHint();
   renderDocFileList();
+}
+function updateDocStatusVisibility(){
+  const t = docType(docType_);
+  const hasExpiry = !!document.getElementById('dc-expiry').value;
+  const row = document.getElementById('doc-status-row').parentElement;
+  row.style.display = (t.person || hasExpiry) ? 'none' : 'block';
+  const note = document.getElementById('dc-status-note');
+  if(note) note.style.display = (!t.person && hasExpiry) ? 'block' : 'none';
 }
 function buildDocStatusRow(){
   const row = document.getElementById('doc-status-row');
@@ -2453,6 +2554,19 @@ function downloadCurrentFile(){
 }
 
 /* ============================= EXPIRED COPIES ============================= */
+/* Staff and guests never signed up for this app, so their trip paperwork
+   is removed outright once the trip is well past - not just the scan. */
+function expiredStaffDocs(){
+  const today = todayISO();
+  return documents.filter(d=>{
+    if(!d.trip_id) return false;
+    const tr = travFor(d.traveller_id);
+    if(!tr || tr.kind === 'family') return false;
+    const t = trips.find(x=>x.id === d.trip_id);
+    if(!t || !t.end_date) return false;
+    return addDays(t.end_date, 30) < today;
+  });
+}
 function expiredFiles(){
   const today = todayISO();
   return {
@@ -2462,11 +2576,19 @@ function expiredFiles(){
 }
 async function sweepExpiredFiles(interactive){
   const { docs, atts } = expiredFiles();
-  const total = docs.length + atts.length;
+  const staff = expiredStaffDocs();
+  const total = docs.length + atts.length + staff.length;
   if(!total){ if(interactive) showToast('Nothing to clear'); return 0; }
-  if(interactive && !confirm(
-      `${total} stored ${total===1?'copy has':'copies have'} passed their keep-until date. ` +
-      `Delete the ${total===1?'file':'files'}? All the details stay.`)) return 0;
+
+  if(interactive){
+    const lines = [];
+    if(docs.length + atts.length)
+      lines.push(`${docs.length+atts.length} stored ${docs.length+atts.length===1?'copy':'copies'} past their keep-until date (details stay).`);
+    if(staff.length)
+      lines.push(`${staff.length} staff or guest ${staff.length===1?'document':'documents'} from finished trips, removed completely:\n  ` +
+        staff.map(d=>`\u2022 ${travName(d.traveller_id)} \u2014 ${d.title||''}`).join('\n  '));
+    if(!confirm(lines.join('\n\n') + '\n\nGo ahead?')) return 0;
+  }
 
   for(const d of docs){
     await sb.storage.from('visas').remove([d.storage_path]);
@@ -2475,6 +2597,10 @@ async function sweepExpiredFiles(interactive){
   for(const a of atts){
     await sb.storage.from('visas').remove([a.storage_path]);
     await sb.from('attachments').delete().eq('id', a.id);
+  }
+  for(const d of staff){
+    if(d.storage_path) await sb.storage.from('visas').remove([d.storage_path]);
+    await sb.from('documents').delete().eq('id', d.id);
   }
   await loadDocuments(); await loadAttachments();
   if(interactive){ showToast(`${total} expired ${total===1?'copy':'copies'} deleted`); refreshCurrentScreen(); }
@@ -2575,12 +2701,41 @@ function openFlightStatus(id){
 }
 
 /* ============================= AUTOCOMPLETE ============================= */
+/* Names to file visas under. Not advice on what any nationality needs -
+   entry rules change too often for a stale list to be trusted. */
+const VISA_KINDS = [
+  ['Schengen short stay','Schengen'],['Schengen long stay','Schengen'],
+  ['France (Schengen)','France'],['Italy (Schengen)','Italy'],['Spain (Schengen)','Spain'],
+  ['Germany (Schengen)','Germany'],['Switzerland (Schengen)','Switzerland'],
+  ['Netherlands (Schengen)','Netherlands'],['Austria (Schengen)','Austria'],
+  ['Greece (Schengen)','Greece'],['Portugal (Schengen)','Portugal'],
+  ['UK Standard Visitor','United Kingdom'],['UK Family Visit','United Kingdom'],
+  ['Ireland Visit','Ireland'],
+  ['US B1/B2','United States'],['US ESTA','United States'],
+  ['Canada Visitor (TRV)','Canada'],['Canada eTA','Canada'],
+  ['Japan Tourist','Japan'],['China L Tourist','China'],['Korea K-ETA','South Korea'],
+  ['India e-Tourist','India'],['Sri Lanka ETA','Sri Lanka'],['Maldives on arrival','Maldives'],
+  ['Thailand Tourist','Thailand'],['Vietnam e-Visa','Vietnam'],
+  ['Singapore Visit Pass','Singapore'],['Malaysia eVisa','Malaysia'],
+  ['Indonesia on arrival','Indonesia'],['Philippines Tourist','Philippines'],
+  ['Turkey e-Visa','T\u00fcrkiye'],['Azerbaijan e-Visa','Azerbaijan'],['Georgia e-Visa','Georgia'],
+  ['Bosnia Tourist','Bosnia and Herzegovina'],['Russia Tourist','Russia'],
+  ['Australia ETA','Australia'],['Australia Visitor 600','Australia'],
+  ['Egypt e-Visa','Egypt'],['Morocco Tourist','Morocco'],['Kenya eTA','Kenya'],
+  ['South Africa Visitor','South Africa'],
+  ['UAE Visit Visa','United Arab Emirates'],['Oman e-Visa','Oman'],
+  ['Bahrain e-Visa','Bahrain'],['Kuwait e-Visa','Kuwait'],['Qatar Hayya','Qatar'],
+];
+
 function lookupRows(kind){
+  if(kind==='visa') return VISA_KINDS.map(v=>({ code:'', label:v[0], sub:v[1], issuer:v[1], rank:0 }))
+    .concat(lookups.filter(l=>l.kind==='airline' && false));
   const custom = lookups.filter(l=>l.kind===kind)
     .map(l=>({ code:l.code||'', label:l.label, sub:'added by the family', country:l.country||'', rank:0 }));
   if(kind==='airline') return AIRLINES.map(a=>({ code:a[0], label:a[1], sub:'', rank:1 })).concat(custom);
   if(kind==='airport') return AIRPORTS.map(a=>({ code:a[0], label:a[1], sub:a[3], country:a[2], rank:a[4] })).concat(custom);
-  return CITIES.map(c=>({ code:'', label:c[0], country:c[1], sub:'', rank:c[2] })).concat(custom);
+  if(kind==='city')    return CITIES.map(c=>({ code:'', label:c[0], country:c[1], sub:'', rank:c[2] })).concat(custom);
+  return custom;
 }
 function acSearch(kind, q){
   q = q.trim().toLowerCase();
@@ -2777,6 +2932,13 @@ function codeFromText(v){
   return m ? m[1].toUpperCase() : '';
 }
 function wirePickers(){
+  document.getElementById('dc-expiry').addEventListener('input', updateDocStatusVisibility);
+  attachAutocomplete(document.getElementById('dc-title'),
+    ()=> docType_ === 'visa' ? 'visa' : '',
+    r=>{ const iss = document.getElementById('dc-issuer');
+         if(r.issuer && !iss.value) iss.value = r.issuer; });
+  ['tp-start','tp-end'].forEach(id=>
+    document.getElementById(id).addEventListener('input', showPaperworkWarning));
   const placeKind = ()=> itemKind === 'flight' ? 'airport' : 'city';
   attachAutocomplete(document.getElementById('it-from'), placeKind, r=>{ itemFromCode = r.code || ''; });
   attachAutocomplete(document.getElementById('it-to'),   placeKind, r=>{ itemToCode   = r.code || ''; });
