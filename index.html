@@ -590,8 +590,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 /* This app runs on its OWN Supabase project. It shares nothing with the
    family ledger — separate accounts, separate PINs, separate data.
    Paste the two values from Supabase -> Project Settings -> API below. */
-const SUPABASE_URL = 'PASTE_YOUR_PROJECT_URL_HERE';
-const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+const SUPABASE_URL = 'https://dhmuvplhynycpzzhidxb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRobXV2cGxoeW55Y3B6emhpZHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMzIxMDYsImV4cCI6MjEwMzkwODEwNn0.Z9j1gXC1hzv9gmvr2tNCfq7bu7EQk2c_JFaDwDSD-no';
 
 const CONFIGURED = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 60;
 const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL.replace(/\/$/,''), SUPABASE_ANON_KEY) : null;
