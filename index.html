@@ -342,6 +342,61 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* segmented tabs */
+  .segbar{display:flex;gap:4px;background:var(--surface-2);border-radius:14px;padding:4px;margin:2px 0 16px;}
+  .segbar button{flex:1;border:none;background:none;border-radius:11px;padding:9px 6px;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.08em;
+    text-transform:uppercase;color:#5c6270;}
+  .segbar button.on{background:var(--bg);color:var(--text);box-shadow:0 1px 2px rgba(20,20,26,0.07);}
+
+  /* readiness panel */
+  .ready{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;margin-bottom:14px;}
+  .ready-row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line);}
+  .ready-row:last-child{border-bottom:none;}
+  .ready-row .rn{flex:1;min-width:0;font-size:14px;font-weight:500;}
+  .ready-row .rn .sub{display:block;font-size:11px;color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+  .pip{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .pip.ok{background:var(--teal);} .pip.warn{background:var(--gold);}
+  .pip.bad{background:var(--coral);} .pip.idle{background:var(--line-strong);}
+
+  /* autocomplete */
+  .ac-wrap{position:relative;}
+  .ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:70;background:var(--bg);
+    border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;max-height:232px;
+    overflow-y:auto;box-shadow:0 8px 24px rgba(20,20,26,0.13);}
+  .ac-item{padding:10px 13px;font-size:14px;border-bottom:1px solid var(--line);cursor:pointer;
+    display:flex;align-items:baseline;gap:8px;}
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item.sel,.ac-item:hover{background:var(--surface-2);}
+  .ac-item .code{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--gold);
+    font-weight:600;min-width:26px;}
+  .ac-item .sub{color:var(--text-faint);font-size:11.5px;}
+  .ac-item.new{color:var(--teal);font-weight:600;font-size:13px;}
+
+  /* file viewer */
+  .viewer{position:fixed;inset:0;z-index:80;background:rgba(16,18,22,0.94);display:none;
+    flex-direction:column;}
+  .viewer.on{display:flex;}
+  .viewer-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff;flex-shrink:0;}
+  .viewer-bar .vt{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .viewer-bar button{background:rgba(255,255,255,0.14);border:none;color:#fff;border-radius:9px;
+    padding:7px 13px;font-size:13px;font-weight:600;}
+  .viewer-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 10px 14px;}
+  .viewer-body img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;}
+  .viewer-body iframe{width:100%;height:100%;border:none;border-radius:8px;background:#fff;}
+  .viewer-note{color:#c9cfd6;font-size:13.5px;text-align:center;line-height:1.6;padding:24px;}
+
+  /* trip banner */
+  .banner{border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:13px;line-height:1.55;
+    border:1px solid var(--gold);background:var(--gold-soft);color:#5f4512;}
+  .banner.bad{border-color:var(--coral);background:var(--coral-soft);color:#7d2f1e;}
+  .banner strong{font-weight:700;}
+
+  .linkbtn{background:none;border:none;color:#9c6a1f;font-family:'IBM Plex Mono',monospace;
+    font-size:11px;font-weight:700;letter-spacing:0.04em;padding:4px 0;cursor:pointer;}
+
   .auth-choice{display:flex;flex-direction:column;gap:10px;margin-top:24px;width:100%;max-width:280px;}
   .auth-choice-btn{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:14px;color:var(--text);text-align:left;display:flex;align-items:center;gap:12px;}
   .auth-choice-btn .ic{font-size:18px;}
@@ -447,8 +502,12 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <!-- HOME -->
     <div class="screen active" id="screen-home">
       <div id="home-dial"></div>
+      <div class="segbar" id="home-seg">
+        <button class="on" onclick="setTripScope('active')">Active</button>
+        <button onclick="setTripScope('past')">Past</button>
+      </div>
       <div class="section-label">
-        <div class="eyebrow">TRIPS</div>
+        <div class="eyebrow" id="trips-heading">TRIPS</div>
         <a id="home-add-trip" style="display:none;" onclick="openTripModal(null)">NEW TRIP &rarr;</a>
       </div>
       <div id="trips-list"></div>
@@ -459,11 +518,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <div class="detail-bar">
         <button class="back-btn" onclick="switchTab('home')">&larr;</button>
         <div class="db-title">Itinerary</div>
+        <button class="icon-btn" title="Add to calendar" onclick="exportTripIcs(activeTripId)">&#128197;</button>
         <button class="icon-btn" id="trip-edit-btn" style="display:none;" onclick="openTripModal(activeTripId)">&#9998;</button>
       </div>
       <div id="trip-hero"></div>
       <div class="trip-head" id="trip-head"></div>
       <div class="chip-row" id="trip-filter"></div>
+      <div id="trip-ready"></div>
       <div id="trip-body"></div>
     </div>
 
@@ -471,8 +532,12 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="screen" id="screen-docs">
       <div class="section-label" style="margin-top:4px;">
         <div class="eyebrow">VISAS &amp; DOCUMENTS</div>
+        <a id="docs-add" style="display:none;" onclick="openDocModal(null)">ADD &rarr;</a>
       </div>
-      <div class="chip-row" id="docs-filter"></div>
+      <div class="segbar" id="docs-seg">
+        <button class="on" onclick="setDocScope('all')">Everyone</button>
+        <button onclick="setDocScope('mine')">Just mine</button>
+      </div>
       <div id="docs-body"></div>
     </div>
 
@@ -501,6 +566,15 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
           </select>
         </div>
         <button class="status-btn" style="width:100%;margin-top:8px;" onclick="addTravellerFromSettings()">Add traveller</button>
+      </div>
+      <div class="section-label"><div class="eyebrow">HOUSEKEEPING</div></div>
+      <div class="settings-list">
+        <div class="settings-item" onclick="openArchive()">
+          <span>Archived trips</span><span class="sub" id="set-archive-count">&rsaquo;</span>
+        </div>
+        <div class="settings-item" id="set-sweep" style="display:none;" onclick="sweepExpiredFiles(true)">
+          <span>Delete expired copies now</span><span class="sub" id="set-sweep-count">&rsaquo;</span>
+        </div>
       </div>
       <p style="font-size:11.5px;color:var(--text-faint);line-height:1.6;margin-top:14px;text-align:center;">
         Members only see trips they are travelling on. The head of the family and the secretary see everything.
@@ -586,20 +660,27 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <label class="form-label">TYPE</label>
       <div class="kind-grid" id="kind-grid"></div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="it-flight-group">
+      <label class="form-label">AIRLINE &amp; FLIGHT NUMBER</label>
+      <div class="two-col">
+        <div class="ac-wrap"><input type="text" id="it-airline" placeholder="Saudia" autocomplete="off"></div>
+        <input type="text" id="it-flightno" placeholder="801" style="flex:0 0 96px;">
+      </div>
+    </div>
+    <div class="form-group" id="it-title-group">
       <label class="form-label" id="it-title-label">NAME OR NUMBER</label>
-      <input type="text" id="it-title" placeholder="SV 801">
+      <input type="text" id="it-title" placeholder="Name">
     </div>
     <div class="form-group" id="it-route-group">
       <label class="form-label">FROM &amp; TO</label>
       <div class="two-col">
-        <input type="text" id="it-from" placeholder="Riyadh">
-        <input type="text" id="it-to" placeholder="Tokyo">
+        <div class="ac-wrap"><input type="text" id="it-from" placeholder="Riyadh" autocomplete="off"></div>
+        <div class="ac-wrap"><input type="text" id="it-to" placeholder="Tokyo" autocomplete="off"></div>
       </div>
     </div>
     <div class="form-group" id="it-place-group">
       <label class="form-label">WHERE</label>
-      <input type="text" id="it-place" placeholder="Shibuya, Tokyo">
+      <div class="ac-wrap"><input type="text" id="it-place" placeholder="Shibuya, Tokyo" autocomplete="off"></div>
     </div>
     <div class="form-group">
       <label class="form-label" id="it-start-label">DATE &amp; TIME</label>
@@ -643,9 +724,110 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   </div>
 </div>
 
+<!-- DOCUMENT MODAL -->
+<div class="modal-overlay" id="modal-doc">
+  <div class="modal-sheet">
+    <h3 id="doc-modal-title">Add a document</h3>
+    <div class="form-group">
+      <label class="form-label">TYPE</label>
+      <div class="kind-grid" id="doc-type-grid"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">WHOSE</label>
+      <select id="dc-traveller"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">APPLIES TO</label>
+      <select id="dc-trip"></select>
+      <p style="font-size:11.5px;color:var(--text-faint);margin:7px 0 0;line-height:1.5;" id="dc-level-hint"></p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="dc-title-label">DESCRIPTION</label>
+      <input type="text" id="dc-title" placeholder="Schengen multi-entry">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ISSUED BY</label>
+      <input type="text" id="dc-issuer" placeholder="France">
+    </div>
+    <div class="two-col">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">ISSUED</label>
+        <input type="date" id="dc-issue">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">EXPIRES</label>
+        <input type="date" id="dc-expiry">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">STATUS</label>
+      <div class="status-row" id="doc-status-row"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">LAST 4 OF THE NUMBER</label>
+      <input type="text" id="dc-last4" maxlength="4" placeholder="4821"
+             style="font-family:'IBM Plex Mono',monospace;letter-spacing:0.2em;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">WHERE THE ORIGINAL IS KEPT</label>
+      <input type="text" id="dc-kept" placeholder="Home safe">
+    </div>
+    <div class="form-group" id="dc-file-group">
+      <label class="form-label">COPY</label>
+      <div id="dc-file-list"></div>
+      <label class="attach-add" for="dc-file">+ Attach a copy</label>
+      <input type="file" id="dc-file" accept="image/*,application/pdf" style="display:none;">
+      <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;" id="dc-file-hint"></p>
+    </div>
+    <div class="form-group" id="dc-nofile-note" style="display:none;">
+      <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;background:var(--surface-2);
+                border-radius:12px;padding:12px 14px;margin:0;">
+        Passports and ID cards are recorded as details only. No copy is ever stored, so nothing
+        sensitive is sitting in the database if it is ever breached.
+      </p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">NOTES</label>
+      <textarea id="dc-notes" rows="2" placeholder="Anything worth remembering."></textarea>
+    </div>
+    <button class="save-btn" id="dc-save" onclick="saveDoc()">Save</button>
+    <button class="delete-btn" id="dc-delete" style="display:none;" onclick="deleteDoc()">Remove</button>
+    <div class="modal-close" onclick="closeModal('modal-doc')">Cancel</div>
+  </div>
+</div>
+
+<!-- ARCHIVE -->
+<div class="modal-overlay" id="modal-archive">
+  <div class="modal-sheet">
+    <h3>Archived trips</h3>
+    <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin:0 0 14px;">
+      Trips that ended more than a year ago. Nothing has been deleted.
+    </p>
+    <div id="archive-list"></div>
+    <div class="modal-close" onclick="closeModal('modal-archive')">Close</div>
+  </div>
+</div>
+
+<!-- FILE VIEWER -->
+<div class="viewer" id="viewer">
+  <div class="viewer-bar">
+    <div class="vt" id="viewer-title">Document</div>
+    <button onclick="downloadCurrentFile()">Download</button>
+    <button onclick="closeViewer()">Close</button>
+  </div>
+  <div class="viewer-body" id="viewer-body"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+/* Reference data for the airport, city and airline pickers.
+   Embedded so search works offline. Anything not listed can still be
+   typed in freely, and custom entries are saved to Supabase. */
+const AIRPORTS=[["AHB","Abha","SA","Abha Regional",0],["AUH","Abu Dhabi","AE","Abu Dhabi Intl",0],["ABV","Abuja","NG","Nnamdi Azikiwe Intl",0],["ACC","Accra","GH","Kotoka Intl",0],["DMM","Ad Dammam","SA","King Fahd Intl",0],["ADD","Addis Ababa","ET","Bole Intl",0],["ADL","Adelaide","AU","Adelaide Intl",0],["AMD","Ahmedabad","IN","Sardar Vallabhbhai Patel Intl",0],["AAN","Al Ain","AE","Al Ain Intl",0],["ABT","Al Bahah","SA","Al Baha",0],["EJH","Al Wajh","SA","Al Wajh Domestic",0],["ALG","Algiers","DZ","Houari Boumediene",0],["ALC","Alicante","ES","Alicante Intl",0],["AMM","Amman","JO","Queen Alia Intl",0],["AMS","Amsterdam","NL","Amsterdam Schiphol",0],["ESB","Ankara","TR","Esenboga Intl",0],["AYT","Antalya","TR","Antalya Intl",0],["AQJ","Aqaba","JO","Aqaba King Hussein Intl",0],["IST","Arnavutkoy","TR","Istanbul",0],["ATH","Athens","GR","Eleftherios Venizelos Intl",0],["ATL","Atlanta","US","Hartsfield Jackson Atlanta Intl",0],["AKL","Auckland","NZ","Auckland Intl",0],["AUS","Austin","US","Austin Bergstrom Intl",0],["BSL","Bale/Mulhouse","FR","EuroAirport Basel-Mulhouse-Freiburg",0],["BWI","Baltimore","US","Baltimore/Washington Intl Thurgood M",0],["BLR","Bangalore","IN","Bengaluru Intl",0],["DMK","Bangkok","TH","Don Mueang Intl",0],["BKK","Bangkok","TH","Suvarnabhumi",0],["BCN","Barcelona","ES","Barcelona Intl",0],["BVA","Beauvais/Tille","FR","Paris Beauvais Tille",0],["PEK","Beijing","CN","Beijing Capital Intl",0],["PKX","Beijing","CN","Beijing Daxing Intl",0],["BEY","Beirut","LB","Beirut Rafic Hariri Intl",0],["BGY","Bergamo","IT","Bergamo / Orio Al Serio",0],["BGO","Bergen","NO","Bergen Flesland",0],["BER","Berlin","DE","Berlin Brandenburg",0],["TXL","Berlin","DE","Berlin-Tegel Intl",0],["BIO","Bilbao","ES","",0],["BHX","Birmingham","GB","Birmingham Intl",0],["BJV","Bodrum","TR","Milas Bodrum Intl",0],["BOG","Bogota","CO","El Dorado Intl",0],["BLQ","Bologna","IT","Bologna / Borgo Panigale",0],["BOD","Bordeaux/Merignac","FR","Bordeaux-Merignac (BA 106)",0],["BOS","Boston","US","General Edward Lawrence Logan Intl",0],["BSB","Brasilia","BR","Presidente Juscelino Kubistschek Int",0],["BNE","Brisbane","AU","Brisbane Intl",0],["BRU","Brussels","BE","",0],["CRL","Brussels","BE","Brussels South Charleroi",0],["BUD","Budapest","HU","Budapest Ferenc Liszt Intl",0],["ELQ","Buraidah","SA","Gassim",0],["PUS","Busan","KR","Gimhae Intl",0],["CAG","Cagliari","IT","Cagliari / Elmas",0],["CNS","Cairns","AU","Cairns Intl",0],["CAI","Cairo","EG","Cairo Intl",0],["YYC","Calgary","CA","Calgary Intl",0],["CUN","Cancun","MX","Cancun Intl",0],["CPT","Cape Town","ZA","Cape Town Intl",0],["CMN","Casablanca","MA","Mohammed V Intl",0],["CTA","Catania","IT","Catania / Fontanarossa",0],["IXC","Chandigarh","IN","",0],["CLT","Charlotte","US","Charlotte Douglas Intl",0],["CTU","Chengdu","CN","Chengdu Shuangliu Intl",0],["MAA","Chennai","IN","Chennai Intl",0],["CNX","Chiang Mai","TH","Chiang Mai Intl",0],["ORD","Chicago","US","Chicago O'Hare Intl",0],["CTS","Chitose / Tomakomai","JP","New Chitose",0],["CKG","Chongqing","CN","Chongqing Jiangbei Intl",0],["CHC","Christchurch","NZ","Christchurch Intl",0],["CLE","Cleveland","US","Cleveland Hopkins Intl",0],["COK","Cochin","IN","Cochin Intl",0],["CGN","Cologne","DE","Cologne Bonn",0],["CMB","Colombo","LK","Bandaranaike Intl Colombo",0],["CPH","Copenhagen","DK","Copenhagen Kastrup",0],["DAD","Da Nang","VN","Da Nang Intl",0],["GOI","Dabolim","IN","",0],["DLM","Dalaman","TR","Dalaman Intl",0],["DFW","Dallas-Fort Worth","US","Dallas Fort Worth Intl",0],["DAR","Dar es Salaam","TZ","Mwalimu Julius K. Nyerere Intl",0],["DPS","Denpasar-Bali Island","ID","Ngurah Rai (Bali) Intl",0],["DEN","Denver","US","Denver Intl",0],["DTW","Detroit","US","Detroit Metropolitan Wayne County",0],["DAC","Dhaka","BD","Dhaka / Hazrat Shahjalal Intl",0],["DOH","Doha","QA","Hamad Intl",0],["DXB","Dubai","AE","Dubai Intl",0],["DUB","Dublin","IE","",0],["IAD","Dulles","US","Washington Dulles Intl",0],["DUR","Durban","ZA","King Shaka Intl",0],["DUS","Dusseldorf","DE","Dusseldorf Intl",0],["EDI","Edinburgh","GB","",0],["EZE","Ezeiza","AR","Ministro Pistarini Intl",0],["FAO","Faro","PT","",0],["FLR","Firenze","IT","Firenze / Peretola",0],["FLL","Fort Lauderdale","US","Fort Lauderdale Hollywood Intl",0],["FRA","Frankfurt-am-Main","DE","Frankfurt am Main Intl",0],["FUK","Fukuoka","JP","",0],["FNC","Funchal","PT","Madeira",0],["GVA","Geneva","CH","Geneva Cointrin Intl",0],["GLA","Glasgow","GB","Glasgow Intl",0],["OOL","Gold Coast","AU","",0],["GOT","Gothenburg","SE","Gothenburg-Landvetter",0],["LPA","Gran Canaria Island","ES","Gran Canaria",0],["GDL","Guadalajara","MX","Don Miguel Hidalgo Y Costilla Intl",0],["CAN","Guangzhou","CN","Guangzhou Baiyun Intl",0],["HAS","Hail","SA","",0],["HAM","Hamburg","DE","",0],["HGH","Hangzhou","CN","Hangzhou Xiaoshan Intl",0],["HAN","Hanoi","VN","Noi Bai Intl",0],["CVG","Hebron","US","Cincinnati Northern Kentucky Intl",0],["HEL","Helsinki","FI","Helsinki Vantaa",0],["HER","Heraklion","GR","Heraklion Intl Nikos Kazantzakis",0],["SGN","Ho Chi Minh City","VN","Tan Son Nhat Intl",0],["HBA","Hobart","AU","Hobart Intl",0],["HKG","Hong Kong","HK","Chek Lap Kok Intl",0],["IAH","Houston","US","George Bush Intercontinental Houston",0],["HRG","Hurghada","EG","Hurghada Intl",0],["HYD","Hyderabad","IN","Rajiv Gandhi Intl Shamshabad",0],["IBZ","Ibiza","ES","",0],["ISB","Islamabad","PK","Islamabad Intl",0],["SAW","Istanbul","TR","Sabiha Gokcen Intl",0],["ADB","Izmir","TR","Adnan Menderes Intl",0],["CGK","Jakarta","ID","Soekarno-Hatta Intl",0],["DWC","Jebel Ali","AE","Al Maktoum Intl",0],["JED","Jeddah","SA","King Abdulaziz Intl",0],["GIZ","Jizan","SA","Jizan Regional",0],["JNB","Johannesburg","ZA","O. R. Tambo Intl",0],["MCI","Kansas City","US","Kansas City Intl",0],["KHI","Karachi","PK","Jinnah Intl",0],["KTM","Kathmandu","NP","Tribhuvan Intl",0],["CFU","Kerkyra Island","GR","Ioannis Kapodistrias Intl",0],["ZNZ","Kiembi Samaki","TZ","Zanzibar",0],["CCU","Kolkata","IN","Netaji Subhash Chandra Bose Intl",0],["KRK","Krakow","PL","John Paul II Intl Krakow-Balice",0],["KUL","Kuala Lumpur","MY","Kuala Lumpur Intl",0],["KWI","Kuwait City","KW","Kuwait Intl",0],["LOS","Lagos","NG","Murtala Muhammed Intl",0],["LHE","Lahore","PK","Alama Iqbal Intl",0],["LGK","Langkawi","MY","Langkawi Intl",0],["CEB","Lapu-Lapu City","PH","Mactan Cebu Intl",0],["LAS","Las Vegas","US","Harry Reid Intl",0],["LIM","Lima","PE","Jorge Chavez Intl",0],["LIS","Lisbon","PT","Lisbon Portela",0],["LTN","London","GB","London Luton",0],["LGW","London","GB","London Gatwick",0],["LCY","London","GB","London City",0],["LHR","London","GB","London Heathrow",0],["STN","London","GB","London Stansted",0],["LAX","Los Angeles","US","Los Angeles Intl",0],["LUX","Luxembourg","LU","Luxembourg-Findel Intl",0],["LXR","Luxor","EG","Luxor Intl",0],["LYS","Lyon","FR","Lyon Saint-Exupery",0],["MAD","Madrid","ES","Madrid Barajas Intl",0],["AGP","Malaga","ES","",0],["MLE","Male","MV","Male Intl",0],["BAH","Manama","BH","Bahrain Intl",0],["MAN","Manchester","GB","",0],["MNL","Manila","PH","Ninoy Aquino Intl",0],["RAK","Marrakech","MA","Menara",0],["RMF","Marsa Alam","EG","Marsa Alam Intl",0],["MRS","Marseille","FR","Marseille Provence",0],["MED","Medina","SA","Prince Mohammad Bin Abdulaziz",0],["MEL","Melbourne","AU","Melbourne Intl",0],["MEX","Mexico City","MX","Licenciado Benito Juarez Intl",0],["MIA","Miami","US","Miami Intl",0],["MXP","Milan","IT","Malpensa Intl",0],["LIN","Milan","IT","Linate",0],["MSP","Minneapolis","US","Minneapolis-St Paul Intl/Wold-Chambe",0],["MBA","Mombasa","KE","Mombasa Moi Intl",0],["YUL","Montreal","CA","Montreal / Pierre Elliott Trudeau In",0],["DME","Moscow","RU","Domodedovo Intl",0],["SVO","Moscow","RU","Sheremetyevo Intl",0],["BOM","Mumbai","IN","Chhatrapati Shivaji Intl",0],["MUC","Munich","DE","Munich Intl",0],["MCT","Muscat","OM","Muscat Intl",0],["JMK","Mykonos Island","GR","Mikonos",0],["USM","Na Thon (Ko Samui Island)","TH","Samui",0],["NAN","Nadi","FJ","Nadi Intl",0],["OKA","Naha","JP","",0],["NBO","Nairobi","KE","Jomo Kenyatta Intl",0],["NAP","Napoli","IT","Napoli / Capodichino Intl",0],["BNA","Nashville","US","Nashville Intl",0],["DEL","New Delhi","IN","Indira Gandhi Intl",0],["MSY","New Orleans","US","Louis Armstrong New Orleans Intl",0],["JFK","New York","US","John F Kennedy Intl",0],["LGA","New York","US","La Guardia",0],["EWR","Newark","US","Newark Liberty Intl",0],["NCE","Nice","FR","Nice-Cote d'Azur",0],["OLB","Olbia","IT","Olbia / Costa Smeralda",0],["MCO","Orlando","US","Orlando Intl",0],["KIX","Osaka","JP","Kansai Intl",0],["ITM","Osaka","JP","Osaka Intl",0],["OSL","Oslo","NO","Oslo Gardermoen",0],["YOW","Ottawa","CA","Ottawa Macdonald-Cartier Intl",0],["PMO","Palermo","IT","Palermo / Punta Raisi",0],["PMI","Palma De Mallorca","ES","",0],["CDG","Paris","FR","Charles de Gaulle Intl",0],["ORY","Paris","FR","Paris-Orly",0],["PEN","Penang","MY","Penang Intl",0],["PER","Perth","AU","Perth Intl",0],["PHL","Philadelphia","US","Philadelphia Intl",0],["PNH","Phnom Penh","KH","Phnom Penh Intl",0],["PHX","Phoenix","US","Phoenix Sky Harbor Intl",0],["HKT","Phuket","TH","Phuket Intl",0],["PSA","Pisa","IT","Pisa / San Giusto - Galileo Galilei ",0],["PIT","Pittsburgh","US","Pittsburgh Intl",0],["PDX","Portland","US","Portland Intl",0],["OPO","Porto","PT","Francisco de Sa Carneiro",0],["PRG","Prague","CZ","Vaclav Havel",0],["PNQ","Pune","IN","",0],["ZQN","Queenstown","NZ","Queenstown Intl",0],["RDU","Raleigh/Durham","US","Raleigh Durham Intl",0],["RKT","Ras Al Khaimah","AE","Ras Al Khaimah Intl",0],["KEF","Reykjavik","IS","Keflavik Intl",0],["GIG","Rio De Janeiro","BR","Galeao - Antonio Carlos Jobim Intl",0],["RUH","Riyadh","SA","King Khaled Intl",0],["RHO","Rodes Island","GR","Diagoras",0],["CIA","Roma","IT","Ciampino",0],["FCO","Rome","IT","Leonardo Da Vinci (Fiumicino) Intl",0],["SLL","Salalah","OM","",0],["SLC","Salt Lake City","US","Salt Lake City Intl",0],["SAN","San Diego","US","San Diego Intl",0],["SFO","San Francisco","US","San Francisco Intl",0],["SCL","Santiago","CL","Comodoro Arturo Merino Benitez Intl",0],["JTR","Santorini Island","GR","Santorini",0],["GRU","Sao Paulo","BR","Guarulhos - Governador Andre Franco ",0],["SEA","Seattle","US","Seattle Tacoma Intl",0],["ICN","Seoul","KR","Incheon Intl",0],["GMP","Seoul","KR","Gimpo Intl",0],["SVQ","Sevilla","ES","",0],["PVG","Shanghai","CN","Shanghai Pudong Intl",0],["SHA","Shanghai","CN","Shanghai Hongqiao Intl",0],["SHJ","Sharjah","AE","Sharjah Intl",0],["SSH","Sharm el-Sheikh","EG","Sharm El Sheikh Intl",0],["SZX","Shenzhen","CN","Shenzhen Bao'an Intl",0],["REP","Siem Reap","KH","Angkor Intl",0],["SIN","Singapore","SG","Singapore Changi Intl",0],["STL","St Louis","US","Lambert St Louis Intl",0],["LED","St. Petersburg","RU","Pulkovo",0],["ARN","Stockholm","SE","Stockholm-Arlanda",0],["NYO","Stockholm / Nykoping","SE","Stockholm Skavsta",0],["STR","Stuttgart","DE","",0],["SUB","Surabaya","ID","Juanda Intl",0],["SYD","Sydney","AU","Sydney Kingsford Smith Intl",0],["TUU","Tabuk","SA","",0],["TIF","Taif","SA","",0],["MFM","Taipa","MO","Macau Intl",0],["TPE","Taipei","TW","Taiwan Taoyuan Intl",0],["TSA","Taipei City","TW","Taipei Songshan",0],["TPA","Tampa","US","Tampa Intl",0],["TLV","Tel Aviv","IL","Ben Gurion Intl",0],["TFS","Tenerife Island","ES","Tenerife South",0],["SKG","Thessaloniki","GR","Thessaloniki Macedonia Intl",0],["PTY","Tocumen","PA","Tocumen Intl",0],["NGO","Tokoname","JP","Chubu Centrair Intl",0],["NRT","Tokyo","JP","Narita Intl",0],["HND","Tokyo","JP","Tokyo Intl",0],["YYZ","Toronto","CA","Lester B. Pearson Intl",0],["TLS","Toulouse/Blagnac","FR","Toulouse-Blagnac",0],["TRV","Trivandrum","IN","Trivandrum Intl",0],["TUN","Tunis","TN","Tunis Carthage Intl",0],["VLC","Valencia","ES","",0],["YVR","Vancouver","CA","Vancouver Intl",0],["VCE","Venezia","IT","Venezia / Tessera - Marco Polo",0],["VIE","Vienna","AT","Vienna Intl",0],["VTE","Vientiane","LA","Wattay Intl",0],["WAW","Warsaw","PL","Warsaw Chopin",0],["DCA","Washington","US","Ronald Reagan Washington National",0],["WLG","Wellington","NZ","Wellington Intl",0],["WUH","Wuhan","CN","Wuhan Tianhe Intl",0],["XIY","Xianyang","CN","Xi'an Xianyang Intl",0],["YNB","Yanbu","SA","Yenbo",0],["RGN","Yangon","MM","Yangon Intl",0],["ZRH","Zurich","CH","",0],["AZI","Abu Dhabi","AE","Al Bateen Executive",1],["DHF","Abu Dhabi","AE","Al Dhafra Air Base",1],["ABS","Abu Simbel","EG","",1],["AOM","Adam","OM","",1],["ADA","Adana","TR","",1],["UAB","Adana","TR","Incirlik Air Base",1],["ADF","Adiyaman","TR","",1],["AFY","Afyonkarahisar","TR","Afyon",1],["AJI","Agri","TR","",1],["XIJ","Ahmed Al Jaber AB","KW","Ahmed Al Jaber Air Base",1],["AKH","Al Kharj","SA","Prince Sultan Air Base",1],["MNH","Al Muladdah","OM","Rustaq",1],["ULH","Al-'Ula","SA","Prince Abdul Majeed bin Abdulaziz In",1],["AJF","Al-Jawf","SA","Al-Jawf Domestic",1],["ALY","Alexandria","EG","El Nouzha",1],["HBE","Alexandria","EG","Borg El Arab Intl",1],["KZR","Altintas","TR","Zafer",1],["MZH","Amasya","TR","Amasya Merzifon",1],["ADJ","Amman","JO","Amman-Marka Intl",1],["ANK","Ankara","TR","Etimesgut Air Base",1],["IUD","Ar Rayyan","QA","Al Udeid Air Base",1],["RAE","Arar","SA","Arar Domestic",1],["SLF","As-Sulayyil","SA","Sulayel",1],["ATZ","Assiut","EG","Assiut Intl",1],["ASW","Aswan","EG","Aswan Intl",1],["CII","Aydin","TR","Cildir",1],["BZI","Balikesir","TR","Balikesir Merkez",1],["BDM","Bandirma","TR","",1],["BAL","Batman","TR","",1],["BGG","Bing\u00f6l","TR","",1],["BHH","Bisha","SA","",1],["BXN","Bodrum","TR","Imsik",1],["RMB","Buraimi","OM","",1],["YEI","Bursa","TR","Bursa Yenisehir",1],["CKZ","Canakkale","TR","",1],["TEQ","Corlu","TR","Tekirdag Corlu",1],["DAK","Dakhla","EG","",1],["DWD","Dawadmi","SA","Dawadmi Domestic",1],["DNZ","Denizli","TR","Cardak",1],["DHA","Dhahran","SA","King Abdulaziz Air Base",1],["DIY","Diyarbakir","TR","",1],["DIA","Doha","QA","Doha Intl",1],["NHD","Dubai","AE","Al Minhad Air Base",1],["DQM","Duqm","OM","Duqm Intl",1],["EDO","Edremit","TR","Balikesir Korfez",1],["DBB","El Alamein","EG","El Alamein Intl",1],["AAC","El Arish","EG","El Arish Intl",1],["CWE","El Cairo","EG","Cairo West",1],["EGH","El Gorah","EG","El Gora",1],["UVL","El Kharga","EG","",1],["ELT","El Tor","EG","",1],["EZS","Elazig","TR","",1],["ERC","Erzincan","TR","",1],["ERZ","Erzurum","TR","Erzurum Intl",1],["ESK","Eskisehir","TR","Eskisehir Air Base",1],["AOE","Eskisehir","TR","Anadolu University",1],["FAU","Fahud","OM","",1],["FJR","Fujairah","AE","Fujairah Intl",1],["GZT","Gaziantep","TR","Gaziantep Intl",1],["GZP","Gazipasa","TR","",1],["RNM","Ghaba","OM","Qarn Alam",1],["SPX","Giza","EG","Sphinx Intl",1],["GKD","Gokceada","TR","Imroz",1],["URY","Gurayat","SA","Guriat Domestic",1],["RSI","Hanak","SA","Red Sea Intl",1],["HTY","Hatay","TR","",1],["HOF","Hofuf","SA","Al Ahsa",1],["IGD","Igdir","TR","",1],["ISE","Isparta","TR","Suleyman Demirel Intl",1],["ISL","Istanbul","TR","Ataturk Intl",1],["IGL","Izmir","TR","Cigli",1],["KCO","Izmit","TR","Cengiz Topel",1],["QJB","Jubail","SA","",1],["KCM","Kahramanmaras","TR","",1],["KSY","Kars","TR","",1],["KFS","Kastamonu","TR","",1],["ASR","Kayseri","TR","Kayseri Erkilet",1],["KMX","Khamis Mushait","SA","King Khaled Air Base",1],["KHS","Khasab","OM","Khasab Air Base",1],["HBT","King Khaled Military City","SA","",1],["KYA","Konya","TR","",1],["OMF","Mafraq","JO","King Hussein Air College",1],["MLX","Malatya","TR","Malatya Erhac",1],["MQM","Mardin","TR","",1],["OMM","Marmul","OM","",1],["MSH","Masirah","OM","Masirah Air Base",1],["MUH","Mersa Matruh","EG","",1],["MSR","Mus","TR","",1],["EAM","Nejran","SA","",1],["NUM","Neom","SA","Neom Bay",1],["NAV","Nevsehir","TR","Nevsehir Kapadokya Intl",1],["CCE","New Administrative Capital","EG","Cairo Capital Intl",1],["OGU","Ordu","TR","Ordu\u2013Giresun",1],["PSD","Port Said","EG","",1],["AQI","Qaisumah","SA","Hafr Al Batin",1],["RAH","Rafha","SA","Rafha Domestic",1],["XXN","Riyadh","SA","Riyadh Air Base",1],["RZV","Rize","TR","Rize\u2013Artvin",1],["SKV","Saint Catherine","EG","St Catherine Intl",1],["SSX","Samsun","TR","Samsun Samair",1],["SZF","Samsun","TR","Samsun Carsamba",1],["SFQ","Sanliurfa","TR","",1],["GNY","Sanliurfa","TR","Sanliurfa GAP",1],["GSQ","Sharq El Owainat","EG","Shark El Oweinat Intl",1],["SHW","Sharurah","SA","",1],["SXZ","Siirt","TR","",1],["NOP","Sinop","TR","",1],["XSB","Sir Bani Yas","AE","",1],["VAS","Sivas","TR","",1],["SEW","Siwa","EG","Siwa Oasis North",1],["HMB","Sohag","EG","Sohag Intl",1],["OHS","Sohar","OM","",1],["SUH","Sur","OM","",1],["TCP","Taba","EG","Taba Intl",1],["COV","Tarsus","TR","\u00c7ukurova Intl",1],["TTH","Thumrait","OM","Thumrait Air Base",1],["TJK","Tokat","TR","",1],["TZX","Trabzon","TR","Trabzon Intl",1],["KYE","Tripoli","LB","Rene Mouawad Air Base",1],["TUI","Turaif","SA","Turaif Domestic",1],["USQ","Usak","TR","",1],["VAN","Van","TR","Van Ferit Melen",1],["WAE","Wadi al-Dawasir","SA","Wadi Al Dawasir",1],["YKO","Yuksekova","TR","Hakkari Yuksekova",1],["ZUL","Zilfi","SA","",1],["ONQ","Zonguldak","TR","",1],["ACA","Acapulco","MX","General Juan N Alvarez Intl",2],["ADE","Aden","YE","Aden Intl",2],["AJY","Agadez","NE","Mano Dayak Intl",2],["AGU","Aguascalientes","MX","Jesus Teran Intl",2],["AKC","Akron","US","Akron Fulton Intl",2],["AAY","Al Ghaydah","YE","Al Ghaidah Intl",2],["ALB","Albany","US","Albany Intl",2],["ALL","Albenga","IT","Villanova D'Albenga Intl",2],["PAC","Albrook","PA","Marcos A. Gelabert Intl",2],["ABQ","Albuquerque","US","Albuquerque Intl Sunport",2],["ALP","Aleppo","SY","Aleppo Intl",2],["AEX","Alexandria","US","Alexandria Intl",2],["ALI","Alice","US","Alice Intl",2],["ABE","Allentown","US","Lehigh Valley Intl",2],["LEI","Almeria","ES","Almeria Intl",2],["IUE","Alofi","NU","Niue Intl",2],["AMA","Amarillo","US","Rick Husband Amarillo Intl",2],["ATQ","Amritsar","IN","Sri Guru Ram Dass Jee Intl Amritsar",2],["ANC","Anchorage","US","Ted Stevens Anchorage Intl",2],["CRK","Angeles City","PH","Clark Intl",2],["ANR","Antwerp","BE","Antwerp Intl (Deurne)",2],["APW","Apia","WS","Faleolo Intl",2],["ATW","Appleton","US","Appleton Intl",2],["ARW","Arad","RO","Arad Intl",2],["EBL","Arbil","IQ","Erbil Intl",2],["AQP","Arequipa","PE","Rodriguez Ballon Intl",2],["SVD","Argyle","VC","Argyle Intl",2],["ATI","Artigas","UY","Artigas Intl",2],["JRO","Arusha","TZ","Kilimanjaro Intl",2],["ASA","Asab","ER","Assab Intl",2],["ABB","Asaba","NG","Asaba Intl",2],["PGU","Asalouyeh","IR","Persian Gulf Intl",2],["ASM","Asmara","ER","Asmara Intl",2],["NQZ","Astana","KZ","Astana Intl",2],["ASU","Asuncion","PY","Silvio Pettirossi Intl",2],["ATR","Atar","MR","Atar Intl",2],["ACY","Atlantic City","US","Atlantic City Intl",2],["RAR","Avarua","CK","Rarotonga Intl",2],["BCD","Bacolod City","PH","Bacolod-Silay City Intl",2],["BGW","Baghdad","IQ","Baghdad Intl",2],["GYD","Baku","AZ","Heydar Aliyev Intl",2],["BPN","Balikpapan-Borneo Island","ID","Sepinggan Intl",2],["CXI","Banana","KI","Cassidy Intl",2],["BND","Bandar Abbas","IR","Bandar Abbas Intl",2],["BWN","Bandar Seri Begawan","BN","Brunei Intl",2],["BDO","Bandung-Java Island","ID","Husein Sastranegara Intl",2],["BGR","Bangor","US","Bangor Intl",2],["BGF","Bangui","CF","Bangui M'Poko Intl",2],["BNX","Banja Luka","BA","Banja Luka Intl",2],["BJL","Banjul","GM","Banjul Intl",2],["BRX","Barahona","DO","Maria Montez Intl",2],["BLA","Barcelona","VE","General Jose Antonio Anzoategui Intl",2],["BRI","Bari","IT","Bari / Palese Intl",2],["BRM","Barquisimeto","VE","Barquisimeto Intl",2],["BAQ","Barranquilla","CO","Ernesto Cortissoz Intl",2],["BSR","Basrah","IQ","Basrah Intl",2],["SKB","Basseterre","KN","Robert L. Bradshaw Intl",2],["BUS","Batumi","GE","Batumi Intl",2],["BDE","Baudette","US","Baudette Intl",2],["BYJ","Beja","PT","Beja Intl",2],["BEL","Belem","BR","Val de Cans/Julio Cezar Ribeiro Intl",2],["BFS","Belfast","GB","Belfast Intl",2],["EGO","Belgorod","RU","Belgorod Intl",2],["BZE","Belize City","BZ","Philip S. W. Goldson Intl",2],["BLI","Bellingham","US","Bellingham Intl",2],["CNF","Belo Horizonte","BR","Tancredo Neves Intl",2],["BEN","Benghazi","LY","Benina Intl",2],["BIL","Billings","US","Billings Logan Intl",2],["BHM","Birmingham","US","Birmingham-Shuttlesworth Intl",2],["BSZ","Bishkek","KG","Manas Intl",2],["OXB","Bissau","GW","Osvaldo Vieira Intl",2],["BLK","Blackpool","GB","Blackpool Intl",2],["BLZ","Blantyre","MW","Chileka Intl",2],["BFN","Bloemfontain","ZA","J B M Hertzog Intl",2],["BYH","Blytheville","US","Arkansas Intl",2],["BTE","Bonthe","SL","Sherbro Intl",2],["BZN","Bozeman","US","Bozeman Yellowstone Intl",2],["BGI","Bridgetown","BB","Sir Grantley Adams Intl",2],["BRS","Bristol","GB","Bristol Intl",2],["BME","Broome","AU","Broome Intl",2],["BRO","Brownsville","US","Brownsville South Padre Island Intl",2],["BBU","Bucharest","RO","Baneasa Intl",2],["OTP","Bucharest","RO","Henri Coanda Intl",2],["BUF","Buffalo","US","Buffalo Niagara Intl",2],["BJM","Bujumbura","BI","Bujumbura Intl",2],["BUQ","Bulawayo","ZW","Joshua Mqabuko Nkomo Intl",2],["IFP","Bullhead City","US","Laughlin Bullhead Intl",2],["BTV","Burlington","US","Patrick Leahy Burlington Intl",2],["NLK","Burnt Pine","NF","Norfolk Island Intl",2],["CSL","Cabo San Lucas","MX","Cabo San Lucas Intl",2],["CBQ","Calabar","NG","Margaret Ekpo Intl",2],["CXL","Calexico","US","Calexico Intl",2],["CLO","Cali","CO","Alfonso Bonilla Aragon Intl",2],["CCJ","Calicut","IN","Calicut Intl",2],["CMW","Camaguey","CU","Ignacio Agramonte Intl",2],["CPE","Campeche","MX","Ingeniero Alberto Acuna Ongay Intl",2],["VCP","Campinas","BR","Viracopos Intl",2],["CBR","Canberra","AU","Canberra Intl",2],["CAP","Cap Haitien","HT","Cap Haitien Intl",2],["CWL","Cardiff","GB","Cardiff Intl",2],["CTG","Cartagena","CO","Rafael Nunez Intl",2],["CPR","Casper","US","Casper-Natrona County Intl",2],["CYB","Cayman Brac","KY","Gerrard Smith Intl",2],["CYO","Cayo Largo del Sur","CU","Vilo Acuna Intl",2],["CHX","Changuinola","PA","Cap Manuel Nino Intl",2],["CHS","Charleston","US","Charleston Air Force Base-Internatio",2],["NEV","Charlestown","KN","Vance W. Amory Intl",2],["TFU","Chengdu","CN","Chengdu Tianfu Intl",2],["CJJ","Cheongju","KR","Cheongju Intl",2],["CKC","Cherkasy","UA","Cherkasy Intl",2],["CWC","Chernivtsi","UA","Chernivtsi Intl",2],["CTM","Chetumal","MX","Chetumal Intl",2],["CEI","Chiang Rai","TH","Chiang Rai Intl",2],["MDW","Chicago","US","Chicago Midway Intl",2],["RFD","Chicago/Rockford","US","Chicago Rockford Intl",2],["CZA","Chichen Itza","MX","Chichen Itza Intl",2],["CIX","Chiclayo","PE","Capitan FAP Jose A Quinones Gonzales",2],["CUU","Chihuahua","MX","General Roberto Fierro Villalobos In",2],["RMO","Chisinau","MD","Chisinau Intl",2],["CGP","Chittagong","BD","Shah Amanat Intl",2],["ACN","Ciudad Acuna","MX","Ciudad Acuna New Intl",2],["CJS","Ciudad Juarez","MX","Abraham Gonzalez Intl",2],["CEN","Ciudad Obregon","MX","Ciudad Obregon Intl",2],["CVM","Ciudad Victoria","MX","General Pedro Jose Mendez Intl",2],["CME","Ciudad del Carmen","MX","Ciudad del Carmen Intl",2],["AGT","Ciudad del Este","PY","Guarani Intl",2],["CLJ","Cluj-Napoca","RO","Cluj-Napoca Intl",2],["CBB","Cochabamba","BO","Jorge Wilsterman Intl",2],["GDT","Cockburn Town","TC","JAGS McCartney Intl",2],["CJB","Coimbatore","IN","Coimbatore Intl",2],["CYR","Colonia","UY","Laguna de Los Patos Intl",2],["CMH","Columbus","US","John Glenn Columbus Intl",2],["LCK","Columbus","US","Rickenbacker Intl",2],["XPL","Comayagua","HN","Tegucigalpa Palmerola Intl",2],["CND","Constanta","RO","Mihail Kogalniceanu Intl",2],["CZL","Constantine","DZ","Mohamed Boudiaf Intl",2],["CRP","Corpus Christi","US","Corpus Christi Intl",2],["CMG","Corumba","BR","Corumba Intl",2],["RMU","Corvera","ES","Regi\u00f3n de Murcia Intl",2],["CZM","Cozumel","MX","Cozumel Intl",2],["CUC","Cucuta","CO","Camilo Daza Intl",2],["CUL","Culiacan","MX","Federal de Bachigualato Intl",2],["CUZ","Cusco","PE","Alejandro Velasco Astete Intl",2],["DKR","Dakar","SN","Leopold Sedar Senghor Intl",2],["DAM","Damascus","SY","Damascus Intl",2],["DRP","Daraga","PH","Legazpi Bicol Intl",2],["DRW","Darwin","AU","Darwin Intl",2],["DVO","Davao City","PH","Francisco Bangoy Intl",2],["DAV","David","PA","Enrique Malek Intl",2],["DAY","Dayton","US","James M Cox Dayton Intl",2],["DAB","Daytona Beach","US","Daytona Beach Intl",2],["DEB","Debrecen","HU","Debrecen Intl",2],["DRT","Del Rio","US","Del Rio Intl",2],["DSM","Des Moines","US","Des Moines Intl",2],["DSS","Diass","SN","Blaise Diagne Intl",2],["DIL","Dili","TL","Presidente Nicolau Lobato Intl",2],["DIR","Dire Dawa","ET","Aba Tenna Dejazmach Yilma Intl",2],["DJE","Djerba","TN","Djerba Zarzis Intl",2],["DNK","Dnipropetrovsk","UA","Dnipropetrovsk Intl",2],["DOK","Donetsk","UA","Donetsk Intl",2],["DLA","Douala","CM","Douala Intl",2],["DUG","Douglas Bisbee","US","Bisbee Douglas Intl",2],["DLH","Duluth","US","Duluth Intl",2],["VCL","Dung Quat Bay","VN","Chu Lai Intl",2],["DGO","Durango","MX","General Guadalupe Victoria Intl",2],["DZO","Durazno","UY","Santa Bernardina Intl",2],["DZA","Dzaoudzi","YT","Dzaoudzi Pamandzi Intl",2],["YEG","Edmonton","CA","Edmonton Intl",2],["VDA","Eilat","IL","Ovda Intl",2],["ELP","El Paso","US","El Paso Intl",2],["EDL","Eldoret","KE","Eldoret Intl",2],["ENU","Enegu","NG","Akanu Ibiam Intl",2],["NBE","Enfidha","TN","Enfidha - Hammamet Intl",2],["ERL","Erenhot","CN","Erenhot Saiwusu Intl",2],["ERI","Erie","US","Erie Intl Tom Ridge Field",2],["SID","Espargos","CV","Amilcar Cabral Intl",2],["EXT","Exeter","GB","Exeter Intl",2],["FAI","Fairbanks","US","Fairbanks Intl",2],["LYP","Faisalabad","PK","Faisalabad Intl",2],["FAR","Fargo","US","Hector Intl",2],["FNT","Flint","US","Bishop Intl",2],["FLN","Florianopolis","BR","Hercilio Luz Intl",2],["RSW","Fort Myers","US","Southwest Florida Intl",2],["FPR","Fort Pierce","US","Treasure Coast Intl",2],["FWA","Fort Wayne","US","Fort Wayne Intl",2],["FTW","Fort Worth","US","Fort Worth Meacham Intl",2],["FDF","Fort-de-France","MQ","Martinique Aime Cesaire Intl",2],["FOR","Fortaleza","BR","Pinto Martins Intl",2],["IGU","Foz Do Iguacu","BR","Cataratas Intl",2],["MVB","Franceville","GA","M'Vengue El Hadj Omar Bongo Ondimba ",2],["FPO","Freeport","BS","Grand Bahama Intl",2],["FNA","Freetown","SL","Lungi Intl",2],["FAT","Fresno","US","Fresno Yosemite Intl",2],["FUN","Funafuti","TV","Funafuti Intl",2],["FOC","Fuzhou","CN","Fuzhou Changle Intl",2],["GBB","Gabala","AZ","Gabala Intl",2],["GAE","Gabes","TN","Gabes Matmata Intl",2],["GBE","Gaborone","BW","Sir Seretse Khama Intl",2],["GAF","Gafsa","TN","Gafsa Ksar Intl",2],["GLS","Galveston","US","Scholes Intl At Galveston",2],["GAN","Gan","MV","Gan Intl",2],["YQX","Gander","CA","Gander Intl",2],["GOU","Garoua","CM","Garoua Intl",2],["GYY","Gary","US","Gary Chicago Intl",2],["GES","General Santos","PH","General Santos Intl",2],["GGT","George Town","BS","Exuma Intl",2],["GCM","Georgetown","KY","Owen Roberts Intl",2],["GEO","Georgetown","GY","Cheddi Jagan Intl",2],["GGW","Glasgow","US","Wokal Field Glasgow Intl",2],["GOM","Goma","CD","Goma Intl",2],["GMO","Gombe","NG","Gombe Lawanti Intl",2],["GFK","Grand Forks","US","Grand Forks Intl",2],["GRR","Grand Rapids","US","Gerald R. Ford Intl",2],["GTF","Great Falls","US","Great Falls Intl",2],["GRB","Green Bay","US","Austin Straubel Intl",2],["GSO","Greensboro","US","Piedmont Triad Intl",2],["GSP","Greenville","US","Greenville Spartanburg Intl",2],["GYE","Guayaquil","EC","Simon Bolivar Intl",2],["GYM","Guaymas","MX","General Jose Maria Yanez Intl",2],["KWL","Guilin City","CN","Guilin Liangjiang Intl",2],["GPT","Gulfport","US","Gulfport Biloxi Intl",2],["GAU","Guwahati","IN","Lokpriya Gopinath Bordoloi Intl",2],["GWD","Gwadar","PK","Gwadar Intl",2],["MWX","Gwangju","KR","Muan Intl",2],["QGY","Gyor","HU","Gyor-Per Intl",2],["GUM","Hagatna","GU","Antonio B. Won Pat Intl",2],["HFA","Haifa","IL","Haifa Intl",2],["HAK","Haikou","CN","Haikou Meilan Intl",2],["HPH","Haiphong","VN","Cat Bi Intl",2],["YHZ","Halifax","CA","Halifax / Stanfield Intl",2],["YHM","Hamilton","CA","John C. Munro Hamilton Intl",2],["HLZ","Hamilton","NZ","Hamilton Intl",2],["BDA","Hamilton","BM","L.F. Wade Intl Intl",2],["HRE","Harare","ZW","Harare Intl",2],["HGA","Hargeisa","SO","Egal Intl",2],["HRL","Harlingen","US","Valley Intl",2],["MDT","Harrisburg","US","Harrisburg Intl",2],["BDL","Hartford","US","Bradley Intl",2],["HDY","Hat Yai","TH","Hat Yai Intl",2],["HAV","Havana","CU","Jose Marti Intl",2],["HFE","Hefei","CN","Hefei Xinqiao Intl",2],["HMO","Hermosillo","MX","General Ignacio P. Garcia Intl",2],["ITO","Hilo","US","Hilo Intl",2],["HOD","Hodeida","YE","Hodeidah Intl",2],["HET","Hohhot","CN","Baita Intl",2],["HOG","Holguin","CU","Frank Pais Intl",2],["HIR","Honiara","SB","Honiara Intl",2],["HNL","Honolulu","US","Honolulu Intl",2],["HUL","Houlton","US","Houlton Intl",2],["TXN","Huangshan","CN","Tunxi Intl",2],["HUX","Huatulco","MX","Bahias de Huatulco Intl",2],["HSV","Huntsville","US","Huntsville Intl Carl T Jones Field",2],["ILO","Iloilo City","PH","Iloilo Intl",2],["ILR","Ilorin","NG","Ilorin Intl",2],["IND","Indianapolis","US","Indianapolis Intl",2],["INL","International Falls","US","Falls Intl",2],["IQT","Iquitos","PE","Coronel FAP Francisco Secada Vignett",2],["IFN","Isfahan","IR","Esfahan Shahid Beheshti Intl",2],["BOC","Isla Colon","PA","Bocas Del Toro Intl",2],["PMV","Isla Margarita","VE","Del Caribe Santiago Marino Intl",2],["IFO","Ivano-Frankivsk","UA","Ivano-Frankivsk Intl",2],["ZIH","Ixtapa","MX","Ixtapa Zihuatanejo Intl",2],["JAN","Jackson","US","Jackson Evers Intl",2],["JAX","Jacksonville","US","Jacksonville Intl",2],["JAI","Jaipur","IN","Jaipur Intl",2],["HLP","Jakarta","ID","Halim Perdanakusuma Intl",2],["DJJ","Jayapura-Papua Island","ID","Sentani Intl",2],["BKN","Jebel","TM","Balkanabat Intl",2],["CJU","Jeju City","KR","Jeju Intl",2],["JUL","Juliaca","PE","Inca Manco Capac Intl",2],["JNU","Juneau","US","Juneau Intl",2],["KBL","Kabul","AF","Kabul Intl",2],["KIA","Kaieteur Falls","GY","Kaieteur Intl",2],["KOA","Kailua/Kona","US","Kona Intl At Keahole",2],["AZO","Kalamazoo","US","Kalamazoo Battle Creek Intl",2],["KLO","Kalibo","PH","Kalibo Intl",2],["FCA","Kalispell","US","Glacier Park Intl",2],["EBB","Kampala","UG","Entebbe Intl",2],["KAN","Kano","NG","Mallam Aminu Intl",2],["KHH","Kaohsiung City","TW","Kaohsiung Intl",2],["KAB","Kariba","ZW","Kariba Intl",2],["KLV","Karlovy Vary","CZ","Karlovy Vary Intl",2],["KTW","Katowice","PL","Katowice Intl",2],["KUN","Kaunas","LT","Kaunas Intl",2],["KVA","Kavala","GR","Alexander the Great Intl",2],["KZN","Kazan","RU","Kazan Intl",2],["KEA","Kerki","TM","Kerki Intl",2],["KJT","Kertajati","ID","Majalengka Kertajati Intl",2],["KTN","Ketchikan","US","Ketchikan Intl",2],["EYW","Key West","US","Key West Intl",2],["HRK","Kharkiv","UA","Kharkiv Intl",2],["KRT","Khartoum","SD","Khartoum Intl",2],["KBP","Kiev","UA","Boryspil Intl",2],["IEV","Kiev","UA","Kiev Zhuliany Intl",2],["KGL","Kigali","RW","Kigali Intl",2],["KIN","Kingston","JM","Norman Manley Intl",2],["FIH","Kinshasa","CD","Ndjili Intl",2],["FKI","Kisangani","CD","Bangoka Intl",2],["KIH","Kish Island","IR","Kish Intl",2],["KGP","Kogalym","RU","Kogalym Intl",2],["BKI","Kota Kinabalu","MY","Kota Kinabalu Intl",2],["BON","Kralendijk","BQ","Flamingo Intl",2],["KRR","Krasnodar","RU","Krasnodar Intl",2],["KWG","Kryvyi Rih","UA","Kryvyi Rih Intl",2],["KCH","Kuching","MY","Kuching Intl",2],["KMG","Kunming","CN","Kunming Wujiaba Intl",2],["KQT","Kurgan-Tyube","TJ","Qurghonteppa Intl",2],["KBK","Kushinagar","IN","Kushinagar Intl",2],["LCE","La Ceiba","HN","Goloson Intl",2],["JBQ","La Isabela","DO","La Isabela Intl",2],["SAP","La Mesa","HN","Ramon Villeda Morales Intl",2],["LAP","La Paz","MX","Manuel Marquez de Leon Intl",2],["LPB","La Paz / El Alto","BO","El Alto Intl",2],["LRM","La Romana","DO","Casa De Campo Intl",2],["CWF","Lake Charles","US","Chennault Intl",2],["LLK","Lankaran","AZ","Lankaran Intl",2],["LAN","Lansing","US","Capital Region Intl",2],["LAO","Laoag City","PH","Laoag Intl",2],["LRD","Laredo","US","Laredo Intl",2],["LCA","Larnarca","CY","Larnaca Intl",2],["LRU","Las Cruces","US","Las Cruces Intl",2],["LTX","Latacunga","EC","Cotopaxi Intl",2],["LTK","Latakia","SY","Bassel Al-Assad Intl",2],["LWV","Lawrenceville","US","Lawrenceville Vincennes Intl",2],["LEE","Leesburg","US","Leesburg Intl",2],["LGP","Legazpi City","PH","Legazpi City Intl",2],["LET","Leticia","CO","Alfredo Vasquez Cobo Intl",2],["LIR","Liberia","CR","Daniel Oduber Quiros Intl",2],["LPX","Liepaja","LV","Liepaja Intl",2],["LLW","Lilongwe","MW","Lilongwe Intl",2],["LTO","Loreto","MX","Loreto Intl",2],["LMM","Los Mochis","MX","Valle del Fuerte Intl",2],["SDF","Louisville","US","Louisville Muhammad Ali Intl",2],["NBJ","Luanda","AO","Dr. Antonio Agostinho Neto Intl",2],["LPQ","Luang Phabang","LA","Luang Phabang Intl",2],["LBB","Lubbock","US","Lubbock Preston Smith Intl",2],["FBM","Lubumbashi","CD","Lubumbashi Intl",2],["LKO","Lucknow","IN","Chaudhary Charan Singh Intl",2],["SON","Luganville","VU","Santo Pekoa Intl",2],["VSG","Luhansk","UA","Luhansk Intl",2],["LUN","Lusaka","ZM","Kenneth Kaunda Intl",2],["LWO","Lviv","UA","Lviv Intl",2],["NMF","Maafaru","MV","Maafaru Intl",2],["MBD","Mafeking","ZA","Mmabatho Intl",2],["MQF","Magnitogorsk","RU","Magnitogorsk Intl",2],["SEZ","Mahe Island","SC","Seychelles Intl",2],["MIU","Maiduguri","NG","Maiduguri Intl",2],["MAJ","Majuro Atoll","MH","Marshall Islands Intl",2],["MGA","Managua","NI","Augusto C. Sandino (Managua) Intl",2],["MAO","Manaus","BR","Eduardo Gomes Intl",2],["MDL","Mandalay","MM","Mandalay Intl",2],["IXE","Mangalore","IN","Mangalore Intl",2],["MSE","Manston","GB","Kent Intl",2],["MEC","Manta","EC","Eloy Alfaro Intl",2],["ZLO","Manzanillo","MX","Playa De Oro Intl",2],["SHO","Manzini","SZ","King Mswati III Intl",2],["MDQ","Mar del Plata","AR","Astor Piazzola Intl",2],["MAR","Maracaibo","VE","La Chinita Intl",2],["ESG","Mariscal Estigarribia","PY","Dr. Luis Maria Argana Intl",2],["MPW","Mariupol","UA","Mariupol Intl",2],["MQT","Marquette","US","Sawyer Intl",2],["MHH","Marsh Harbour","BS","Marsh Harbour Intl",2],["MSU","Maseru","LS","Moshoeshoe I Intl",2],["MHD","Mashhad","IR","Mashhad Intl",2],["MSW","Massawa","ER","Massawa Intl",2],["MSS","Massena","US","Massena Intl Richards Field",2],["MVZ","Masvingo","ZW","Masvingo Intl",2],["MAM","Matamoros","MX","General Servando Canales Intl",2],["LOP","Mataram","ID","Bandara Intl Lombok",2],["HRI","Mattala","LK","Mattala Rajapaksa Intl",2],["CNN","Mattanur","IN","Kannur Intl",2],["MZT","Mazatlan","MX","General Rafael Buelna Intl",2],["MFE","Mc Allen","US","Mc Allen Miller Intl",2],["KNO","Medan-Sumatra Island","ID","Polonia Intl",2],["MFR","Medford","US","Rogue Valley Intl Medford",2],["MLB","Melbourne","US","Melbourne Orlando Intl",2],["MLZ","Melo","UY","Cerro Largo Intl",2],["MEM","Memphis","US","Memphis Intl",2],["RLO","Merlo","AR","Valle Del Conlara Intl",2],["MXL","Mexicali","MX","General Rodolfo Sanchez Taboada Intl",2],["MAF","Midland","US","Midland Intl Air and Space Port",2],["MKE","Milwaukee","US","General Mitchell Intl",2],["MOT","Minot","US","Minot Intl",2],["MSQ","Minsk","BY","Minsk Intl",2],["MSO","Missoula","US","Missoula Intl",2],["MGQ","Mogadishu","SO","Aden Adde Intl",2],["MLI","Moline","US","Quad City Intl",2],["MIR","Monastir","TN","Monastir Habib Bourguiba Intl",2],["LOV","Monclova","MX","Monclova Intl",2],["YQM","Moncton","CA","Greater Moncton Intl",2],["ROB","Monrovia","LR","Roberts Intl",2],["MBJ","Montego Bay","JM","Sangster Intl",2],["NTR","Monterrey","MX","Del Norte Intl",2],["MTY","Monterrey","MX","General Mariano Escobedo Intl",2],["MVD","Montevideo","UY","Carrasco Intl /General C L Berisso",2],["MSV","Monticello","US","Sullivan County Intl",2],["YMX","Montreal","CA","Montreal Intl (Mirabel)",2],["GOX","Mopa","IN","Manohar Intl",2],["MLM","Morelia","MX","General Francisco J. Mujica Intl",2],["HAH","Moroni","KM","Prince Said Ibrahim Intl",2],["OSF","Moscow","RU","Ostafyevo Intl",2],["VKO","Moscow","RU","Vnukovo Intl",2],["MWH","Moses Lake","US","Grant Co Intl",2],["OMO","Mostar","BA","Mostar Intl",2],["OSB","Mosul","IQ","Mosul Intl",2],["MQP","Mpumalanga","ZA","Kruger Mpumalanga Intl",2],["MDG","Mudanjiang","CN","Mudanjiang Hailang Intl",2],["MUX","Multan","PK","Multan Intl",2],["MYR","Myrtle Beach","US","Myrtle Beach Intl",2],["MJT","Mytilene","GR","Mytilene Intl",2],["NDJ","N'Djamena","TD","N'Djamena Intl",2],["NDR","Nador","MA","Nador Intl",2],["NJF","Najaf","IQ","Al Najaf Intl",2],["KHN","Nanchang","CN","Nanchang Changbei Intl",2],["NAG","Naqpur","IN","Dr. Babasaheb Ambedkar Intl",2],["NAS","Nassau","BS","Lynden Pindling Intl",2],["SUV","Nausori","FJ","Nausori Intl",2],["NVT","Navegantes","BR","Ministro Victor Konder Intl",2],["NMI","Navi Mumbai","IN","Navi Mumbai Intl",2],["NLA","Ndola","ZM","Simon Mwansa Kapwepwe Intl",2],["SWF","Newburgh","US","Stewart Intl",2],["EFK","Newport","US","Northeast Kingdom Intl",2],["PHF","Newport News","US","Newport News Williamsburg Intl",2],["IAG","Niagara Falls","US","Niagara Falls Intl",2],["NIM","Niamey","NE","Diori Hamani Intl",2],["LRL","Niamtougou","TG","Niamtougou Intl",2],["ECN","Nicosia","CY","Ercan Intl",2],["NLV","Nikolayev","UA","Mykolaiv Intl",2],["NGB","Ningbo","CN","Ningbo Lishe Intl",2],["GOJ","Nizhny Novgorod","RU","Nizhny Novgorod Intl",2],["OLS","Nogales","US","Nogales Intl",2],["NOG","Nogales","MX","Nogales Intl",2],["DXN","Noida","IN","Noida Intl",2],["ORF","Norfolk","US","Norfolk Intl",2],["NWI","Norwich","GB","Norwich Intl",2],["NDB","Nouadhibou","MR","Nouadhibou Intl",2],["NKC","Nouakchott","MR","Nouakchott Intl",2],["NOU","Noumea","NC","La Tontouta Intl",2],["NLD","Nuevo Laredo","MX","Quetzalcoatl Intl",2],["TBU","Nuku'alofa","TO","Fua'amotu Intl",2],["OAK","Oakland","US","Metropolitan Oakland Intl",2],["OAX","Oaxaca","MX","Xoxocotlan Intl",2],["OCF","Ocala","US","Ocala Intl Jim Taylor Field",2],["ODS","Odessa","UA","Odessa Intl",2],["OGS","Ogdensburg","US","Ogdensburg Intl",2],["KSA","Okat","FM","Kosrae Intl",2],["SFS","Olongapo City","PH","Subic Bay Intl",2],["ONT","Ontario","US","Ontario Intl",2],["OMR","Oradea","RO","Oradea Intl",2],["AUA","Oranjestad","AW","Queen Beatrix Intl",2],["SFB","Orlando","US","Orlando Sanford Intl",2],["OST","Ostend","BE","Ostend-Bruges Intl",2],["QOW","Owerri","NG","Sam Mbakwe Intl",2],["PPG","Pago Pago","AS","Pago Pago Intl",2],["PKZ","Pakse","LA","Pakse Intl",2],["PLQ","Palanga","LT","Palanga Intl",2],["PQM","Palenque","MX","Palenque Intl",2],["PSP","Palm Springs","US","Palm Springs Intl",2],["PFN","Panama City","US","Panama City-Bay Co Intl",2],["BLB","Panama City","PA","Howard/Panama Pacifico Intl",2],["ECP","Panama City Beach","US","Northwest Florida Beaches Intl",2],["TAG","Panglao","PH","Panglao Bohol Intl",2],["PPT","Papeete","PF","Faa'a Intl",2],["PFO","Paphos","CY","Paphos Intl",2],["LSP","Paraguana","VE","Josefa Camejo Intl",2],["PGL","Pascagoula","US","Trent Lott Intl",2],["PJC","Pedro Juan Caballero","PY","Dr Augusto Roberto Fuster Intl",2],["PEI","Pereira","CO","Matecana Intl",2],["PSR","Pescara","IT","Pescara Intl",2],["PEW","Peshawar","PK","Peshawar Intl",2],["KTI","Phnom Penh","KH","Techo Intl",2],["PDS","Piedras Negras","MX","Piedras Negras Intl",2],["NTY","Pilanesberg","ZA","Pilanesberg Intl",2],["PIO","Pisco","PE","Capitan FAP Renan Elias Olivera Intl",2],["PIU","Piura","PE","Capitan FAP Guillermo Concha Iberico",2],["PBG","Plattsburgh","US","Plattsburgh Intl",2],["PDV","Plovdiv","BG","Plovdiv Intl",2],["PNI","Pohnpei Island","FM","Pohnpei Intl",2],["PHH","Pokhara","NP","Pokhara Intl",2],["PTK","Pontiac","US","Oakland County Intl",2],["CLM","Port Angeles","US","William R Fairchild Intl",2],["IXZ","Port Blair","IN","Vir Savarkar Intl",2],["PHC","Port Harcourt","NG","Port Harcourt Intl",2],["PHE","Port Hedland","AU","Port Hedland Intl",2],["PHN","Port Huron","US","St Clair County Intl",2],["MRU","Port Louis","MU","Sir Seewoosagur Ramgoolam Intl",2],["POM","Port Moresby","PG","Port Moresby Jacksons Intl",2],["PZU","Port Sudan","SD","Port Sudan New Intl",2],["POS","Port of Spain","TT","Piarco Intl",2],["PAP","Port-au-Prince","HT","Toussaint Louverture Intl",2],["PWM","Portland","US","Portland Intl Jetport",2],["PSM","Portsmouth","US","Portsmouth Intl at Pease",2],["PTG","Potgietersrus","ZA","Polokwane Intl",2],["RAI","Praia","CV","Praia Intl",2],["PQI","Presque Isle","US","Presque Isle Intl",2],["PRN","Prishtina","KS","Pristina Intl",2],["PVD","Providence","US","Rhode Island TF Green Intl",2],["PCL","Pucallpa","PE","Cap FAP David Abenzur Rengifo Intl",2],["PBC","Puebla","MX","Hermanos Serdan Intl",2],["PBL","Puerto Cabello","VE","General Bartolome Salom Intl",2],["PXM","Puerto Escondido","MX","Puerto Escondido Intl",2],["IGR","Puerto Iguazu","AR","Cataratas Del Iguazu Intl",2],["LIO","Puerto Limon","CR","Limon Intl",2],["PEM","Puerto Maldonado","PE","Padre Aldamiz Intl",2],["PZO","Puerto Ordaz-Ciudad Guayana","VE","General Manuel Carlos Piar Intl",2],["PPE","Puerto Penasco","MX","Puerto Penasco Intl",2],["POP","Puerto Plata","DO","Gregorio Luperon Intl",2],["PVR","Puerto Vallarta","MX","Licenciado Gustavo Diaz Ordaz Intl",2],["PUJ","Punta Cana","DO","Punta Cana Intl",2],["PDP","Punta del Este","UY","Capitan Corbeta CA Curbelo Intl",2],["FNJ","Pyongyang","KP","Pyongyang Intl",2],["TAO","Qingdao","CN","Qingdao Jiaodong Intl",2],["YQB","Quebec","CA","Quebec Jean Lesage Intl",2],["UET","Quetta","PK","Quetta Intl",2],["HSR","Rajkot","IN","Rajkot Intl",2],["UTP","Rayong","TH","U-Tapao Intl",2],["REC","Recife","BR","Guararapes - Gilberto Freyre Intl",2],["YQR","Regina","CA","Regina Intl",2],["RNO","Reno","US","Reno Tahoe Intl",2],["RES","Resistencia","AR","Resistencia Intl",2],["REX","Reynosa","MX","General Lucio Blanco Intl",2],["RIC","Richmond","US","Richmond Intl",2],["RIX","Riga","LV","Riga Intl",2],["RMI","Rimini","IT","Rimini / Miramare - Federico Fellini",2],["RGA","Rio Grande","AR","Hermes Quijada Intl",2],["RIH","Rio Hato","PA","Scarlett Martinez Intl",2],["MDE","Rionegro","CO","Jose Maria Cordova Intl",2],["RVY","Rivera","UY","Presidente General Don Oscar D. Gest",2],["YTM","Riviere Rouge","CA","La Macaza / Mont-Tremblant Intl Inc",2],["RWN","Rivne","UA","Rivne Intl",2],["RIY","Riyan","YE","Mukalla Intl",2],["EIS","Road Town","VG","Terrance B. Lettsome Intl",2],["RTB","Roatan Island","HN","Juan Manuel Galvez Intl",2],["ROC","Rochester","US","Greater Rochester Intl",2],["RST","Rochester","US","Rochester Intl",2],["RME","Rome","US","Griffiss Intl",2],["ROV","Rostov-on-Don","RU","Platov Intl",2],["ROW","Roswell","US","Roswell Intl Air Center",2],["ROP","Rota Island","MP","Rota Intl",2],["SMF","Sacramento","US","Sacramento Intl",2],["MBS","Saginaw","US","MBS Intl",2],["GND","Saint George's","GD","Point Salines Intl",2],["SXM","Saint Martin","SX","Princess Juliana Intl",2],["SPN","Saipan Island","MP","Francisco C. Ada Saipan Intl",2],["SLA","Salta","AR","Martin Miguel De Guemes Intl",2],["SLW","Saltillo","MX","Plan De Guadalupe Intl",2],["STY","Salto","UY","Nueva Hesperides Intl",2],["SSA","Salvador","BR","Deputado Luiz Eduardo Magalhaes Intl",2],["AZS","Samana","DO","Samana El Catey Intl",2],["KUF","Samara","RU","Kurumoch Intl",2],["AAP","Samarinda","ID","Aji Pangeran Tumenggung Pranoto Intl",2],["ADZ","San Andres","CO","Gustavo Rojas Pinilla Intl",2],["SAT","San Antonio","US","San Antonio Intl",2],["FRS","San Benito","GT","Mundo Maya Intl",2],["SBD","San Bernardino","US","San Bernardino Intl",2],["SFH","San Felipe","MX","San Felipe Intl",2],["SJC","San Jose","US","Norman Y. Mineta San Jose Intl",2],["SJO","San Jose","CR","Juan Santamaria Intl",2],["SYQ","San Jose","CR","Tobias Bolanos Intl",2],["SJD","San Jose del Cabo","MX","Los Cabos Intl",2],["SJU","San Juan","PR","Luis Munoz Marin Intl",2],["SLP","San Luis Potosi","MX","Ponciano Arriaga Intl",2],["ILS","San Salvador","SV","Ilopango Intl",2],["JUJ","San Salvador de Jujuy","AR","Gobernador Horacio Guzman Intl",2],["SAH","Sana'a","YE","Sana'a Intl",2],["SAL","Santa Clara","SV","El Salvador Intl",2],["VVI","Santa Cruz","BO","Viru Viru Intl",2],["NLU","Santa Lucia","MX","Felipe Angeles Intl",2],["SMR","Santa Marta","CO","Simon Bolivar Intl",2],["STI","Santiago","DO","Cibao Intl",2],["SCU","Santiago","CU","Antonio Maceo Intl",2],["SDQ","Santo Domingo","DO","Las Americas Intl",2],["STD","Santo Domingo","VE","Mayor Buenaventura Vivas Intl",2],["SYX","Sanya","CN","Sanya Phoenix Intl",2],["NAT","Sao Goncalo Do Amarante","BR","Greater Natal Intl",2],["SLZ","Sao Luis","BR","Marechal Cunha Machado Intl",2],["TMS","Sao Tome","ST","Sao Tome Intl",2],["SJJ","Sarajevo","BA","Sarajevo Intl",2],["SRQ","Sarasota/Bradenton","US","Sarasota Bradenton Intl",2],["SOB","Sarmellek","HU","Sarmellek Intl",2],["YXE","Saskatoon","CA","Saskatoon John G. Diefenbaker Intl",2],["CIU","Sault Ste Marie","US","Chippewa County Intl",2],["SAV","Savannah","US","Savannah Hilton Head Intl",2],["GXF","Sayun","YE","Sayun Intl",2],["BFI","Seattle","US","Boeing Field King County Intl",2],["JHB","Senai","MY","Senai Intl",2],["SFA","Sfax","TN","Sfax Thyna Intl",2],["SJW","Shijiazhuang","CN","Shijiazhuang Daguocun Intl",2],["SYZ","Shiraz","IR","Shiraz Shahid Dastghaib Intl",2],["SQQ","Siauliai","LT","Siauliai Intl",2],["SBZ","Sibiu","RO","Sibiu Intl",2],["DTB","Siborong-Borong","ID","Sisingamangaraja XII Intl",2],["SAI","Siem Reap","KH","Siem Reap\u2013Angkor Intl",2],["KOS","Sihanukville","KH","Sihanoukville Intl",2],["BJX","Silao","MX","Del Bajio Intl",2],["SIP","Simferopol","UA","Simferopol Intl",2],["AER","Sochi","RU","Sochi Intl",2],["SCT","Socotra Islands","YE","Socotra Intl",2],["YNY","Sokcho / Gangneung","KR","Yangyang Intl",2],["SKO","Sokoto","NG","Sadiq Abubakar III Intl",2],["CHQ","Souda","GR","Chania Intl",2],["GEG","Spokane","US","Spokane Intl",2],["PIE","St Petersburg-Clearwater","US","St Petersburg Clearwater Intl",2],["ANU","St. George","AG","V.C. Bird Intl",2],["YYT","St. John's","CA","St. John's Intl",2],["BZY","Strymba","MD","Balti Intl",2],["SZB","Subang","MY","Sultan Abdul Aziz Shah Intl",2],["SRE","Sucre","BO","Alcantar\u00c3\u00ad Intl",2],["ISU","Sulaymaniyah","IQ","Sulaymaniyah Intl",2],["WSI","Sydney","AU","Western Sydney Intl (Nancy-Bird Walt",2],["ZYL","Sylhet","BD","Osmany Intl",2],["SYR","Syracuse","US","Syracuse Hancock Intl",2],["TAI","Ta'izz","YE","Ta'izz Intl",2],["TBZ","Tabriz","IR","Tabriz Intl",2],["TCQ","Tacna","PE","Coronel FAP Carlos Ciriani Santa Ros",2],["IKU","Tamchy","KG","Issyk-Kul Intl",2],["TAM","Tampico","MX","General Francisco Javier Mina Intl",2],["TAP","Tapachula","MX","Tapachula Intl",2],["TRW","Tarawa","KI","Bonriki Intl",2],["TGM","Targu Mures","RO","Transilvania Targu Mures Intl",2],["TAS","Tashkent","UZ","Tashkent Intl",2],["TBS","Tbilisi","GE","Tbilisi Intl",2],["TGU","Tegucigalpa","HN","Toncontin Intl",2],["IKA","Tehran","IR","Imam Khomeini Intl",2],["THR","Tehran","IR","Mehrabad Intl",2],["TNL","Ternopil","UA","Ternopil Intl",2],["HUF","Terre Haute","US","Terre Haute Intl Hulman Field",2],["TSN","Tianjin","CN","Tianjin Binhai Intl",2],["TIJ","Tijuana","MX","General Abelardo L. Rodriguez Intl",2],["TIQ","Tinian Island","MP","Tinian Intl",2],["TIA","Tirana","AL","Tirana Intl Mother Teresa",2],["TLC","Toluca","MX","Licenciado Adolfo Lopez Mateos Intl",2],["TRN","Torino","IT","Torino / Caselle Intl",2],["TRC","Torreon","MX","Francisco Sarabia Intl",2],["TOE","Tozeur","TN","Tozeur Nefta Intl",2],["TIP","Tripoli","LY","Tripoli Intl",2],["TRU","Trujillo","PE","Capitan FAP Carlos Martinez De Pinil",2],["TUS","Tucson","US","Tucson Intl",2],["TUL","Tulsa","US","Tulsa Intl",2],["TQO","Tulum","MX","Felipe Carrillo Puerto Intl",2],["TUK","Turbat","PK","Turbat Intl",2],["HSA","Turkistan","KZ","Hazrat Sultan Intl",2],["CRZ","Turkmenabat","TM","Turkmenabat Intl",2],["TGZ","Tuxtla Gutierrez","MX","Angel Albino Corzo Intl",2],["TZL","Tuzla","BA","Tuzla Intl",2],["TJM","Tyumen","RU","Roshchino Intl",2],["UFA","Ufa","RU","Ufa Intl",2],["UPG","Ujung Pandang-Celebes Island","ID","Hasanuddin Intl",2],["UBN","Ulaanbaatar","MN","Chinggis Khaan Intl",2],["ULN","Ulan Bator","MN","Chinggis Khaan Intl",2],["UNI","Union Island","VC","Union Island Intl",2],["URC","Urumqi","CN","Urumqi Diwopu Intl",2],["UDJ","Uzhhorod","UA","Uzhhorod Intl",2],["VLN","Valencia","VE","Arturo Michelena Intl",2],["VRA","Varadero","CU","Juan Gualberto Gomez Intl",2],["VAV","Vava'u Island","TO","Vava'u Intl",2],["VNT","Ventspils","LV","Ventspils Intl",2],["VER","Veracruz","MX","General Heriberto Jara Intl",2],["YYJ","Victoria","CA","Victoria Intl",2],["VFA","Victoria Falls","ZW","Victoria Falls Intl",2],["UVF","Vieux Fort","LC","Hewanorra Intl",2],["VSA","Villahermosa","MX","Carlos Rovirosa Perez Intl",2],["VNO","Vilnius","LT","Vilnius Intl",2],["VVO","Vladivostok","RU","Vladivostok Intl",2],["VOG","Volgograd","RU","Volgograd Intl",2],["VOZ","Voronezh","RU","Voronezh Intl",2],["VDO","V\u00e2n \u0110\u1ed3n","VN","Van Don Intl",2],["RRT","Warroad","US","Warroad Intl Memorial Field",2],["ART","Watertown","US","Watertown Intl",2],["WRZ","Weerawila","LK","Weerawila Intl",2],["TKK","Weno Island","FM","Chuuk Intl",2],["PBI","West Palm Beach","US","President Donald J. Trump Intl (form",2],["WWK","Wewak","PG","Wewak Intl",2],["YXY","Whitehorse","CA","Whitehorse / Erik Nielsen Intl",2],["AVP","Wilkes-Barre/Scranton","US","Wilkes Barre Scranton Intl",2],["CUR","Willemstad","CW","Hato Intl",2],["ISN","Williston","US","Sloulin Field Intl",2],["XWA","Williston","US","Williston Basin Intl",2],["ILM","Wilmington","US","Wilmington Intl",2],["WDH","Windhoek","NA","Hosea Kutako Intl",2],["YWG","Winnipeg","CA","Winnipeg / James Armstrong Richardso",2],["WUX","Wuxi","CN","Sunan Shuofang Intl",2],["XMN","Xiamen","CN","Xiamen Gaoqi Intl",2],["NSI","Yaounde","CM","Yaounde Nsimalen Intl",2],["YAP","Yap Island","FM","Yap Intl",2],["INU","Yaren District","NR","Nauru Intl",2],["BTZ","Yarom","TH","Yala Betong Intl",2],["EVN","Yerevan","AM","Zvartnots Intl",2],["YIA","Yogyakarta","ID","Yogyakarta Intl",2],["JOG","Yogyakarta-Java Island","ID","Adi Sutjipto Intl",2],["YUM","Yuma","US","Yuma MCAS/Yuma Intl",2],["ZCL","Zacatecas","MX","General Leobardo C. Ruiz Intl",2],["ZAH","Zahedan","IR","Zahedan Intl",2],["ZAM","Zamboanga City","PH","Zamboanga Intl",2],["PBM","Zandery","SR","Johan Adolf Pengel Intl",2],["ZZE","Zangilan","AZ","Zangilan Intl",2],["OZH","Zaporizhia","UA","Zaporizhzhia Intl",2],["ZTU","Zaqatala","AZ","Zaqatala Intl",2],["ZMH","108 Mile","CA","South Cariboo Region / 108 Mile",3],["AAH","Aachen","DE","Aachen-Merzbruck",3],["AAL","Aalborg","DK","",3],["AAR","Aarhus","DK","",3],["JEG","Aasiaat","GL","",3],["ABD","Abadan","IR","",3],["ABF","Abaiang","KI","",3],["ABA","Abakan","RU","",3],["CIS","Abariringa","KI","Canton",3],["XAB","Abbeville (Buigny/Saint-Maclou)","FR","Abbeville-Buigny-Saint-Maclou",3],["YXX","Abbotsford","CA","",3],["AAW","Abbottabad","PK","",3],["AEH","Abeche","TD","",3],["AEA","Abemama Atoll","KI","",3],["OGO","Abengourou","CI","",3],["ABZ","Aberdeen","GB","Aberdeen Dyce",3],["ABR","Aberdeen","US","Aberdeen Regional",3],["APG","Aberdeen Proving Grounds(Aberdeen)","US","Phillips Army Air Field",3],["ABJ","Abidjan","CI","Port Bouet",3],["ABI","Abilene","US","Abilene Regional",3],["DYS","Abilene","US","Dyess Air Force Base",3],["VJI","Abingdon","US","Virginia Highlands",3],["MTV","Ablow","VU","Mota Lava",3],["ABO","Aboisso","CI","",3],["EAB","Abs","YE","",3],["AEU","Abu Musa","IR","Abumusa Island",3],["ACD","Acandi","CO","Alcides Fernandez",3],["AGV","Acarigua","VE","Oswaldo Guevara Mujica",3],["ACS","Achinsk","RU","",3],["RSS","Ad Damazin","SD","Damazin",3],["ADT","Ada","US","Ada Municipal",3],["AAD","Adado","SO","",3],["ADK","Adak Island","US","Adak",3],["AZR","Adrar","DZ","Touat Cheikh Sidi Mohamed Belkebir",3],["ADG","Adrian","US","Lenawee County",3],["VBA","Aeng","MM","Ann",3],["AFR","Afore","PG","Afore Airstrip",3],["AFO","Afton","US","Afton Municipal",3],["AGA","Agadir","MA","Al Massira",3],["IXA","Agartala","IN","",3],["AGX","Agatti","IN","",3],["AGF","Agen/La Garenne","FR","Agen-La Garenne",3],["AGZ","Aggeneys","ZA","",3],["AGR","Agra","IN","",3],["AGQ","Agrinion","GR","",3],["GGB","Agua Boa","BR","Fazenda Olhos D`agua",3],["HAY","Aguachica","CO","",3],["BQN","Aguadilla","PR","Rafael Hernandez",3],["AGJ","Aguni","JP","",3],["AHE","Ahe Atoll","PF","Ahe",3],["AHS","Ahuas","HN","",3],["AWZ","Ahwaz","IR","",3],["AIK","Aiken","US","Aiken Municipal",3],["BXJ","Aima Ata","KZ","Boralday",3],["ANW","Ainsworth","US","Ainsworth Municipal",3],["AIE","Aiome","PG","",3],["AEO","Aioun El Atrouss","MR","",3],["JHQ","Airlie Beach","AU","Shute Harbour",3],["AHL","Aishalton","GY","",3],["ATP","Aitape","PG","",3],["TAJ","Aitape","PG","Tadji",3],["AIT","Aitutaki","CK","",3],["AYU","Aiyura Valley","PG","Aiyura",3],["AJL","Aizawl","IN","Lengpui",3],["MFX","Ajaccio","FR","Meribel",3],["AJA","Ajaccio/Napoleon Bonaparte","FR","Ajaccio-Napoleon Bonaparte",3],["AKK","Akhiok","US","",3],["AKI","Akiak","US","",3],["AXT","Akita","JP","",3],["AKE","Aki\u00e9ni","GA","",3],["AJJ","Akjoujt","MR","",3],["LAK","Aklavik","CA","",3],["AKD","Akola","IN","",3],["AKO","Akron","US","Colorado Plains Regional",3],["CAK","Akron","US","Akron Canton Regional",3],["AKT","Akrotiri","CY","RAF Akrotiri",3],["AKU","Aksu","CN","",3],["SCO","Aktau","KZ","",3],["AKX","Aktyubinsk","KZ","Aktobe",3],["AKV","Akulivik","CA","",3],["AKR","Akure","NG","",3],["AEY","Akureyri","IS","",3],["LAQ","Al Bayda'","LY","La Abraq",3],["TQD","Al Habbaniyah","IQ","Al Taqaddum Air Base",3],["AHU","Al Hoceima","MA","Cherif Al Idrissi",3],["BYD","Al-Bayda","YE","",3],["EBD","Al-Ubayyid","SD","El Obeid",3],["QGS","Alagoinhas","BR","",3],["GMZ","Alajero","ES","La Gomera",3],["AUK","Alakanuk","US","",3],["ALM","Alamogordo","US","Alamogordo White Sands Regional",3],["HMN","Alamogordo","US","Holloman Air Force Base",3],["ALS","Alamosa","US","San Luis Valley Regional Bergman Fie",3],["VIT","Alava","ES","Vitoria/Foronda",3],["ABC","Albacete","ES","Albacete-Los Llanos",3],["ABY","Albany","US","Southwest Georgia Regional",3],["ALH","Albany","AU","",3],["AEL","Albert Lea","US","Albert Lea Municipal",3],["BYF","Albert/Bray","FR","Albert-Bray",3],["LBI","Albi/Le Sequestre","FR","Albi-Le Sequestre",3],["JHL","Albian Village","CA","Fort MacKay/Albian",3],["ABN","Albina","SR","",3],["ABX","Albury","AU","",3],["ADH","Aldan","RU","",3],["ALQ","Alegrete","BR","Alegrete Novo",3],["ALT","Alenquer","BR","",3],["YLT","Alert","CA","",3],["YAL","Alert Bay","CA","",3],["XAS","Ales/Deaux","FR","Ales-Deaux",3],["AES","Alesund","NO","",3],["ALJ","Alexander Bay","ZA","",3],["ALX","Alexander City","US","Thomas C Russell Field",3],["ALR","Alexandra","NZ","",3],["AXN","Alexandria","US","Chandler Field",3],["ESF","Alexandria","US","Esler Regional",3],["AXD","Alexandroupolis","GR","Dimokritos",3],["AHO","Alghero","IT","Alghero / Fertilia",3],["AXG","Algona","US","Algona Municipal",3],["AII","Ali-Sabieh","DJ","",3],["ASP","Alice Springs","AU","",3],["AIV","Aliceville","US","George Downer",3],["HRH","Aligarth","IN","Dhanipur Airstrip",3],["IXD","Allahabad","IN","",3],["AET","Allakaket","US","",3],["ADY","Alldays","ZA","",3],["AIA","Alliance","US","Alliance Municipal",3],["YTF","Alma","CA","",3],["AMN","Alma","US","Gratiot Community",3],["ALA","Almaty","KZ","",3],["MEU","Almeirim","BR","Monte Dourado",3],["GGF","Almeirim","BR","",3],["AMJ","Almenara","BR","Cirilo Queiroz",3],["IXV","Along","IN","",3],["ARD","Alor Island","ID","Mali",3],["AOR","Alor Satar","MY","Sultan Abdul Halim",3],["APN","Alpena","US","Alpena County Regional",3],["ABH","Alpha","AU","",3],["LNH","Alpurrurulam","AU","Lake Nash",3],["SSJ","Alstahaug","NO","Sandnessjoen Stokka",3],["ALF","Alta","NO","",3],["AFL","Alta Floresta","BR","",3],["LTI","Altai","MN","",3],["ATM","Altamira","BR","",3],["AAT","Altay","CN","Altay Air Base",3],["AOC","Altenburg","DE","Altenburg-Nobitz",3],["ACH","Altenrhein","CH","St Gallen Altenrhein",3],["WAP","Alto Palena","CL","",3],["APY","Alto Parnaiba","BR","",3],["ARR","Alto Rio Senguerr","AR","D. Casimiro Szlapelis",3],["ALN","Alton/St Louis","US","St Louis Regional",3],["AOO","Altoona","US","Altoona Blair County",3],["AXS","Altus","US","Altus Quartz Mountain Regional",3],["LTS","Altus","US","Altus Air Force Base",3],["ALU","Alula","SO","",3],["AVR","Alverca","PT","",3],["AMC","Am Timan","TD","",3],["AHI","Amahai-Seram Island","ID","Amahai",3],["AXJ","Amakusa","JP","",3],["AFI","Amalfi","CO","",3],["ASJ","Amami","JP","",3],["AMU","Amanab","PG","",3],["TDW","Amarillo","US","Tradewind",3],["AMT","Amata","AU","",3],["IVA","Ambanja","MG","",3],["ATF","Ambato","EC","Chachoan",3],["WAM","Ambatondrazaka","MG","",3],["AMB","Ambilobe","MG","",3],["ABL","Ambler","US","",3],["AMQ","Ambon","ID","Pattimura Ambon",3],["ASV","Amboseli National Park","KE","Amboseli",3],["AZZ","Ambriz","AO","",3],["ULB","Ambryn Island","VU","Ulei",3],["AUJ","Ambunti","PG","",3],["AMV","Amderma","RU","",3],["IAM","Amenas","DZ","In Amenas",3],["AHH","Amery","US","Amery Municipal",3],["AMW","Ames","US","Ames Municipal",3],["AEM","Amgu","RU","",3],["QAM","Amiens/Glisy","FR","Amiens-Glisy",3],["BSM","Amol","IR","Bishe Kola Air Base",3],["YEY","Amos","CA","Amos Magny",3],["AMP","Ampanihy","MG","",3],["ADP","Ampara","LK","",3],["AAO","Anaco","VE","",3],["DYR","Anadyr","RU","Ugolny",3],["YAA","Anahim Lake","CA","",3],["AKP","Anaktuvuk Pass","US","",3],["HVA","Analalava","MG","",3],["AAQ","Anapa","RU","",3],["APS","Anapolis","BR","",3],["EDF","Anchorage","US","Elmendorf Air Force Base",3],["MRI","Anchorage","US","Merrill Field",3],["AOI","Ancona","IT","Ancona / Falconara",3],["ZUD","Ancud","CL","Pupelde",3],["ANS","Andahuaylas","PE","",3],["ADO","Andamooka","AU","",3],["ZWA","Andapa","MG","",3],["ADC","Andekombe","PG","Andakombe",3],["ANX","Andenes","NO","Andoya",3],["UAM","Andersen","GU","Andersen Air Force Base",3],["AID","Anderson","US","Anderson Municipal Darlington Field",3],["AND","Anderson","US","Anderson Regional",3],["ADN","Andes","CO","",3],["AZN","Andijan","UZ","",3],["AOP","Andoas","PE","Alferez FAP Alfredo Vladimir Sara Ba",3],["PYR","Andravida","GR","",3],["ADR","Andrews","US","Robert F Swinnie",3],["COX","Andros","BS","Congo Town",3],["SAQ","Andros Island","BS","San Andros",3],["ASD","Andros Town","BS","",3],["NGD","Anegada","VG","Captain Auguste George",3],["AUY","Anelghowhat","VU","",3],["Niu","Angaha","TO","Mata'aho",3],["AXX","Angel Fire","US","",3],["AGH","Angelholm","SE","Angelholm-Helsingborg",3],["HLY","Angelsey","GB","Anglesey",3],["XAV","Angers","FR","Albertville",3],["ANE","Angers/Marce","FR","Angers-Loire",3],["LJN","Angleton/Lake Jackson","US","Texas Gulf Coast Regional",3],["YAX","Angling Lake","CA","Wapekeka",3],["ANO","Angoche","MZ","",3],["ANQ","Angola","US","Tri State Steuben County",3],["AGN","Angoon","US","Angoon Seaplane Base",3],["ANG","Angouleme/Brie/Champniers","FR","Angouleme-Brie-Champniers",3],["ANI","Aniak","US","",3],["AWD","Aniwa","VU","",3],["AKA","Ankang","CN","",3],["JVA","Ankavandra","MG","",3],["WAK","Ankazoabo","MG","",3],["ARB","Ann Arbor","US","Ann Arbor Municipal",3],["AAE","Annabah","DZ","Annaba",3],["NAI","Annai","GY","",3],["ANP","Annapolis","US","Lee",3],["XMK","Annecy","FR","Montelimar - Ancone",3],["NCY","Annecy/Meythet","FR","Annecy-Haute-Savoie-Mont Blanc",3],["QNJ","Annemasse","FR","",3],["ANN","Annette","US","Annette Island",3],["ANB","Anniston","US","Anniston Metropolitan",3],["AQG","Anqing","CN","",3],["QOB","Ansbach","DE","Ansbach-Petersdorf",3],["AOG","Anshan","CN","Anshan Air Base",3],["AVA","Anshun","CN","Anshun Huangguoshu",3],["ATA","Anta","PE","Comandante FAP German Arias Graziani",3],["ANM","Antalaha","MG","Antsirabato",3],["TNR","Antananarivo","MG","Ivato",3],["ANY","Anthony","US","Anthony Municipal",3],["ATE","Antlers","US","Antlers Municipal",3],["ANF","Antofagasta","CL","Cerro Moreno",3],["WAQ","Antsalova","MG","",3],["ATJ","Antsirabe","MG","",3],["DIE","Antsiranana","MG","Arrachart",3],["WAI","Antsohihy","MG","Ambalabe",3],["BNY","Anua","SB","Bellona/Anua",3],["ACJ","Anuradhapura","LK","Anuradhapura Air Force Base",3],["ANV","Anvik","US","",3],["AYN","Anyang","CN","",3],["AOJ","Aomori","JP","",3],["AOT","Aosta","IT","",3],["AAF","Apalachicola","US","Apalachicola Regional",3],["APK","Apataki","PF","",3],["KVK","Apatity","RU","Kirovsk-Apatity",3],["FGI","Apia","WS","Fagali'i",3],["API","Apiay","CO","Gomez Nino Apiay Air Base",3],["TXA","Apizaco","MX","Tlaxcala",3],["APB","Apolo","BO","",3],["APV","Apple Valley","US","",3],["APU","Apucarana","BR","",3],["AJK","Araak","IR","Arak",3],["AJU","Aracaju","BR","Santa Maria",3],["ARU","Aracatuba","BR","",3],["ARS","Aragarcas","BR","Estancia das Cascatas",3],["AUX","Araguaina","BR","",3],["ACF","Aral","CN","Aral Talim",3],["AXC","Aramac","AU","",3],["ADI","Arandis","NA","",3],["AHF","Arapahoe","US","Arapahoe Municipal",3],["APQ","Arapiraca","BR","",3],["APX","Arapongas","BR","",3],["AAG","Arapoti","BR","",3],["ACR","Araracuara","CO","",3],["AQA","Araraquara","BR","",3],["ARY","Ararat","AU","",3],["JAW","Araripina","BR","",3],["RKA","Aratika","PF","Aratika Nord",3],["AUC","Arauca","CO","Santiago Perez",3],["AAX","Araxa","BR","",3],["AMH","Arba Minch","ET","",3],["TTB","Arbatax","IT","Tortoli' / Arbatax",3],["XAC","Arcachon/La Teste-de-Buch","FR","Arcachon-La Teste-de-Buch",3],["ACV","Arcata/Eureka","US","California Redwood Coast-Humboldt Co",3],["ARH","Archangelsk","RU","Talagi",3],["YAB","Arctic Bay","CA","",3],["ARC","Arctic Village","US","",3],["ADU","Ardabil","IR","",3],["ADM","Ardmore","US","Ardmore Municipal",3],["ARE","Arecibo","PR","Antonio Nery Juarbe Pol",3],["QZO","Arezzo","IT","",3],["XAR","Aribinda","BF","",3],["ARI","Arica","CL","Chacalluta",3],["AIR","Aripuan\u00e3","BR","",3],["AQM","Ariquemes","BR","Nova Vida",3],["AYK","Arkalyk","KZ","Arkalyk North",3],["VKV","Arkhangelsk","RU","Vaskovo",3],["RLT","Arlit","NE","",3]];
+const CITIES=[["Abha","SA",0],["Abu Dhabi","AE",0],["Abuja","NG",0],["Accra","GH",0],["Ad Dammam","SA",0],["Addis Ababa","ET",0],["Adelaide","AU",0],["Ahmedabad","IN",0],["Al Ain","AE",0],["Al Bahah","SA",0],["Al Wajh","SA",0],["Algiers","DZ",0],["Alicante","ES",0],["Amman","JO",0],["Amsterdam","NL",0],["Ankara","TR",0],["Antalya","TR",0],["Aqaba","JO",0],["Arnavutkoy","TR",0],["Athens","GR",0],["Atlanta","US",0],["Auckland","NZ",0],["Austin","US",0],["Bale/Mulhouse","FR",0],["Baltimore","US",0],["Bangalore","IN",0],["Bangkok","TH",0],["Barcelona","ES",0],["Beauvais/Tille","FR",0],["Beijing","CN",0],["Beirut","LB",0],["Bergamo","IT",0],["Bergen","NO",0],["Berlin","DE",0],["Bilbao","ES",0],["Birmingham","GB",0],["Bodrum","TR",0],["Bogota","CO",0],["Bologna","IT",0],["Bordeaux/Merignac","FR",0],["Boston","US",0],["Brasilia","BR",0],["Brisbane","AU",0],["Brussels","BE",0],["Budapest","HU",0],["Buraidah","SA",0],["Busan","KR",0],["Cagliari","IT",0],["Cairns","AU",0],["Cairo","EG",0],["Calgary","CA",0],["Cancun","MX",0],["Cape Town","ZA",0],["Casablanca","MA",0],["Catania","IT",0],["Chandigarh","IN",0],["Charlotte","US",0],["Chengdu","CN",0],["Chennai","IN",0],["Chiang Mai","TH",0],["Chicago","US",0],["Chitose / Tomakomai","JP",0],["Chongqing","CN",0],["Christchurch","NZ",0],["Cleveland","US",0],["Cochin","IN",0],["Cologne","DE",0],["Colombo","LK",0],["Copenhagen","DK",0],["Da Nang","VN",0],["Dabolim","IN",0],["Dalaman","TR",0],["Dallas-Fort Worth","US",0],["Dar es Salaam","TZ",0],["Denpasar-Bali Island","ID",0],["Denver","US",0],["Detroit","US",0],["Dhaka","BD",0],["Doha","QA",0],["Dubai","AE",0],["Dublin","IE",0],["Dulles","US",0],["Durban","ZA",0],["Dusseldorf","DE",0],["Edinburgh","GB",0],["Ezeiza","AR",0],["Faro","PT",0],["Firenze","IT",0],["Fort Lauderdale","US",0],["Frankfurt-am-Main","DE",0],["Fukuoka","JP",0],["Funchal","PT",0],["Geneva","CH",0],["Glasgow","GB",0],["Gold Coast","AU",0],["Gothenburg","SE",0],["Gran Canaria Island","ES",0],["Guadalajara","MX",0],["Guangzhou","CN",0],["Hail","SA",0],["Hamburg","DE",0],["Hangzhou","CN",0],["Hanoi","VN",0],["Hebron","US",0],["Helsinki","FI",0],["Heraklion","GR",0],["Ho Chi Minh City","VN",0],["Hobart","AU",0],["Hong Kong","HK",0],["Houston","US",0],["Hurghada","EG",0],["Hyderabad","IN",0],["Ibiza","ES",0],["Islamabad","PK",0],["Istanbul","TR",0],["Izmir","TR",0],["Jakarta","ID",0],["Jebel Ali","AE",0],["Jeddah","SA",0],["Jizan","SA",0],["Johannesburg","ZA",0],["Kansas City","US",0],["Karachi","PK",0],["Kathmandu","NP",0],["Kerkyra Island","GR",0],["Kiembi Samaki","TZ",0],["Kolkata","IN",0],["Krakow","PL",0],["Kuala Lumpur","MY",0],["Kuwait City","KW",0],["Lagos","NG",0],["Lahore","PK",0],["Langkawi","MY",0],["Lapu-Lapu City","PH",0],["Las Vegas","US",0],["Lima","PE",0],["Lisbon","PT",0],["London","GB",0],["Los Angeles","US",0],["Luxembourg","LU",0],["Luxor","EG",0],["Lyon","FR",0],["Madrid","ES",0],["Malaga","ES",0],["Male","MV",0],["Manama","BH",0],["Manchester","GB",0],["Manila","PH",0],["Marrakech","MA",0],["Marsa Alam","EG",0],["Marseille","FR",0],["Medina","SA",0],["Melbourne","AU",0],["Mexico City","MX",0],["Miami","US",0],["Milan","IT",0],["Minneapolis","US",0],["Mombasa","KE",0],["Montreal","CA",0],["Moscow","RU",0],["Mumbai","IN",0],["Munich","DE",0],["Muscat","OM",0],["Mykonos Island","GR",0],["Na Thon (Ko Samui Island)","TH",0],["Nadi","FJ",0],["Naha","JP",0],["Nairobi","KE",0],["Napoli","IT",0],["Nashville","US",0],["New Delhi","IN",0],["New Orleans","US",0],["New York","US",0],["Newark","US",0],["Nice","FR",0],["Olbia","IT",0],["Orlando","US",0],["Osaka","JP",0],["Oslo","NO",0],["Ottawa","CA",0],["Palermo","IT",0],["Palma De Mallorca","ES",0],["Paris","FR",0],["Penang","MY",0],["Perth","AU",0],["Philadelphia","US",0],["Phnom Penh","KH",0],["Phoenix","US",0],["Phuket","TH",0],["Pisa","IT",0],["Pittsburgh","US",0],["Portland","US",0],["Porto","PT",0],["Prague","CZ",0],["Pune","IN",0],["Queenstown","NZ",0],["Raleigh/Durham","US",0],["Ras Al Khaimah","AE",0],["Reykjavik","IS",0],["Rio De Janeiro","BR",0],["Riyadh","SA",0],["Rodes Island","GR",0],["Roma","IT",0],["Rome","IT",0],["Salalah","OM",0],["Salt Lake City","US",0],["San Diego","US",0],["San Francisco","US",0],["Santiago","CL",0],["Santorini Island","GR",0],["Sao Paulo","BR",0],["Seattle","US",0],["Seoul","KR",0],["Sevilla","ES",0],["Shanghai","CN",0],["Sharjah","AE",0],["Sharm el-Sheikh","EG",0],["Shenzhen","CN",0],["Siem Reap","KH",0],["Singapore","SG",0],["St Louis","US",0],["St. Petersburg","RU",0],["Stockholm","SE",0],["Stockholm / Nykoping","SE",0],["Stuttgart","DE",0],["Surabaya","ID",0],["Sydney","AU",0],["Tabuk","SA",0],["Taif","SA",0],["Taipa","MO",0],["Taipei","TW",0],["Taipei City","TW",0],["Tampa","US",0],["Tel Aviv","IL",0],["Tenerife Island","ES",0],["Thessaloniki","GR",0],["Tocumen","PA",0],["Tokoname","JP",0],["Tokyo","JP",0],["Toronto","CA",0],["Toulouse/Blagnac","FR",0],["Trivandrum","IN",0],["Tunis","TN",0],["Valencia","ES",0],["Vancouver","CA",0],["Venezia","IT",0],["Vienna","AT",0],["Vientiane","LA",0],["Warsaw","PL",0],["Washington","US",0],["Wellington","NZ",0],["Wuhan","CN",0],["Xianyang","CN",0],["Yanbu","SA",0],["Yangon","MM",0],["Zurich","CH",0],["Abu Simbel","EG",1],["Adam","OM",1],["Adana","TR",1],["Adiyaman","TR",1],["Afyonkarahisar","TR",1],["Agri","TR",1],["Ahmed Al Jaber AB","KW",1],["Al Kharj","SA",1],["Al Muladdah","OM",1],["Al Ula","SA",1],["Al-'Ula","SA",1],["Al-Jawf","SA",1],["Alexandria","EG",1],["Altintas","TR",1],["Amalfi","IT",1],["Amasya","TR",1],["Ar Rayyan","QA",1],["Arar","SA",1],["As-Sulayyil","SA",1],["Assisi","IT",1],["Assiut","EG",1],["Aswan","EG",1],["Avignon","FR",1],["Aydin","TR",1],["Ayutthaya","TH",1],["Baden-Baden","DE",1],["Balikesir","TR",1],["Bandirma","TR",1],["Banff","CA",1],["Bath","GB",1],["Batman","TR",1],["Bing\u00f6l","TR",1],["Bisha","SA",1],["Brighton","GB",1],["Bruges","BE",1],["Buraimi","OM",1],["Bursa","TR",1],["Cambridge","GB",1],["Canakkale","TR",1],["Cannes","FR",1],["Cappadocia","TR",1],["Cascais","PT",1],["Cesky Krumlov","CZ",1],["Chamonix","FR",1],["Cinque Terre","IT",1],["Colmar","FR",1],["Como","IT",1],["Cordoba","ES",1],["Corlu","TR",1],["Cotswolds","GB",1],["Dakhla","EG",1],["Dawadmi","SA",1],["Dead Sea","JO",1],["Delft","NL",1],["Denizli","TR",1],["Dhahran","SA",1],["Dijon","FR",1],["Diriyah","SA",1],["Diyarbakir","TR",1],["Duqm","OM",1],["Edremit","TR",1],["El Alamein","EG",1],["El Arish","EG",1],["El Cairo","EG",1],["El Gorah","EG",1],["El Kharga","EG",1],["El Tor","EG",1],["Elazig","TR",1],["Ella","LK",1],["Erzincan","TR",1],["Erzurum","TR",1],["Eskisehir","TR",1],["Fahud","OM",1],["Fujairah","AE",1],["Galle","LK",1],["Garmisch","DE",1],["Gaziantep","TR",1],["Gazipasa","TR",1],["Ghaba","OM",1],["Ghent","BE",1],["Giethoorn","NL",1],["Giza","EG",1],["Gokceada","TR",1],["Granada","ES",1],["Grindelwald","CH",1],["Guilin","CN",1],["Gurayat","SA",1],["Gyeongju","KR",1],["Ha Long","VN",1],["Hakone","JP",1],["Hallstatt","AT",1],["Hanak","SA",1],["Hatay","TR",1],["Heidelberg","DE",1],["Hofuf","SA",1],["Hoi An","VN",1],["Igdir","TR",1],["Innsbruck","AT",1],["Interlaken","CH",1],["Isparta","TR",1],["Izmit","TR",1],["Jiuzhaigou","CN",1],["Jubail","SA",1],["Kahramanmaras","TR",1],["Kamakura","JP",1],["Kanazawa","JP",1],["Kandy","LK",1],["Kars","TR",1],["Kastamonu","TR",1],["Kayseri","TR",1],["Khamis Mushait","SA",1],["Khasab","OM",1],["Khobar","SA",1],["King Khaled Military City","SA",1],["Konya","TR",1],["Kyoto","JP",1],["Lake District","GB",1],["Lausanne","CH",1],["Lucca","IT",1],["Lucerne","CH",1],["Mafraq","JO",1],["Malatya","TR",1],["Marbella","ES",1],["Mardin","TR",1],["Marmul","OM",1],["Masirah","OM",1],["Mersa Matruh","EG",1],["Montreux","CH",1],["Mus","TR",1],["Musandam","OM",1],["Mysore","IN",1],["Napa","US",1],["Nara","JP",1],["Nejran","SA",1],["Neom","SA",1],["Nevsehir","TR",1],["New Administrative Capital","EG",1],["Niagara Falls","CA",1],["Nikko","JP",1],["Nizwa","OM",1],["Ordu","TR",1],["Oxford","GB",1],["Pamukkale","TR",1],["Petra","JO",1],["Port Said","EG",1],["Portofino","IT",1],["Positano","IT",1],["Potsdam","DE",1],["Qaisumah","SA",1],["Quebec City","CA",1],["Rafha","SA",1],["Reims","FR",1],["Rishikesh","IN",1],["Rize","TR",1],["Ronda","ES",1],["Rothenburg","DE",1],["Rotterdam","NL",1],["Saint Catherine","EG",1],["Saint-Tropez","FR",1],["Salzburg","AT",1],["Samsun","TR",1],["San Sebastian","ES",1],["Sanliurfa","TR",1],["Sedona","US",1],["Segovia","ES",1],["Sharq El Owainat","EG",1],["Sharurah","SA",1],["Siena","IT",1],["Siirt","TR",1],["Sinop","TR",1],["Sintra","PT",1],["Sir Bani Yas","AE",1],["Sivas","TR",1],["Siwa","EG",1],["Sohag","EG",1],["Sohar","OM",1],["Sorrento","IT",1],["St Moritz","CH",1],["Stratford-upon-Avon","GB",1],["Sur","OM",1],["Suzhou","CN",1],["Taba","EG",1],["Tarsus","TR",1],["The Hague","NL",1],["Thumrait","OM",1],["Tokat","TR",1],["Toledo","ES",1],["Trabzon","TR",1],["Tripoli","LB",1],["Turaif","SA",1],["Udaipur","IN",1],["Usak","TR",1],["Utrecht","NL",1],["Van","TR",1],["Verona","IT",1],["Versailles","FR",1],["Wadi Rum","JO",1],["Wadi al-Dawasir","SA",1],["Whistler","CA",1],["Windsor","GB",1],["York","GB",1],["Yuksekova","TR",1],["Zermatt","CH",1],["Zilfi","SA",1],["Zonguldak","TR",1],["Acapulco","MX",2],["Aden","YE",2],["Agadez","NE",2],["Aguascalientes","MX",2],["Akron","US",2],["Al Ghaydah","YE",2],["Albany","US",2],["Albenga","IT",2],["Albrook","PA",2],["Albuquerque","US",2],["Aleppo","SY",2],["Alexandria","US",2],["Alice","US",2],["Allentown","US",2],["Almeria","ES",2],["Alofi","NU",2],["Amarillo","US",2],["Amritsar","IN",2],["Anchorage","US",2],["Angeles City","PH",2],["Antwerp","BE",2],["Apia","WS",2],["Appleton","US",2],["Arad","RO",2],["Arbil","IQ",2],["Arequipa","PE",2],["Argyle","VC",2],["Artigas","UY",2],["Arusha","TZ",2],["Asab","ER",2],["Asaba","NG",2],["Asalouyeh","IR",2],["Asmara","ER",2],["Astana","KZ",2],["Asuncion","PY",2],["Atar","MR",2],["Atlantic City","US",2],["Avarua","CK",2],["Bacolod City","PH",2],["Baghdad","IQ",2],["Baku","AZ",2],["Balikpapan-Borneo Island","ID",2],["Banana","KI",2],["Bandar Abbas","IR",2],["Bandar Seri Begawan","BN",2],["Bandung-Java Island","ID",2],["Bangor","US",2],["Bangui","CF",2],["Banja Luka","BA",2],["Banjul","GM",2],["Barahona","DO",2],["Barcelona","VE",2],["Bari","IT",2],["Barquisimeto","VE",2],["Barranquilla","CO",2],["Basrah","IQ",2],["Basseterre","KN",2],["Batumi","GE",2],["Baudette","US",2],["Beja","PT",2],["Belem","BR",2],["Belfast","GB",2],["Belgorod","RU",2],["Belize City","BZ",2],["Bellingham","US",2],["Belo Horizonte","BR",2],["Benghazi","LY",2],["Billings","US",2],["Birmingham","US",2],["Bishkek","KG",2],["Bissau","GW",2],["Blackpool","GB",2],["Blantyre","MW",2],["Bloemfontain","ZA",2],["Blytheville","US",2],["Bonthe","SL",2],["Bozeman","US",2],["Bridgetown","BB",2],["Bristol","GB",2],["Broome","AU",2],["Brownsville","US",2],["Bucharest","RO",2],["Buffalo","US",2],["Bujumbura","BI",2],["Bulawayo","ZW",2],["Bullhead City","US",2],["Burlington","US",2],["Burnt Pine","NF",2],["Cabo San Lucas","MX",2],["Calabar","NG",2],["Calexico","US",2],["Cali","CO",2],["Calicut","IN",2],["Camaguey","CU",2],["Campeche","MX",2],["Campinas","BR",2],["Canberra","AU",2],["Cap Haitien","HT",2],["Cardiff","GB",2],["Cartagena","CO",2],["Casper","US",2],["Cayman Brac","KY",2],["Cayo Largo del Sur","CU",2],["Changuinola","PA",2],["Charleston","US",2],["Charlestown","KN",2],["Cheongju","KR",2],["Cherkasy","UA",2],["Chernivtsi","UA",2],["Chetumal","MX",2],["Chiang Rai","TH",2],["Chicago/Rockford","US",2],["Chichen Itza","MX",2],["Chiclayo","PE",2],["Chihuahua","MX",2],["Chisinau","MD",2],["Chittagong","BD",2],["Ciudad Acuna","MX",2],["Ciudad Juarez","MX",2],["Ciudad Obregon","MX",2],["Ciudad Victoria","MX",2],["Ciudad del Carmen","MX",2],["Ciudad del Este","PY",2],["Cluj-Napoca","RO",2],["Cochabamba","BO",2],["Cockburn Town","TC",2],["Coimbatore","IN",2],["Colonia","UY",2],["Columbus","US",2],["Comayagua","HN",2],["Constanta","RO",2],["Constantine","DZ",2],["Corpus Christi","US",2],["Corumba","BR",2],["Corvera","ES",2],["Cozumel","MX",2],["Cucuta","CO",2],["Culiacan","MX",2],["Cusco","PE",2],["Dakar","SN",2],["Damascus","SY",2],["Daraga","PH",2],["Darwin","AU",2],["Davao City","PH",2],["David","PA",2],["Dayton","US",2],["Daytona Beach","US",2],["Debrecen","HU",2],["Del Rio","US",2],["Des Moines","US",2],["Diass","SN",2],["Dili","TL",2],["Dire Dawa","ET",2],["Djerba","TN",2],["Dnipropetrovsk","UA",2],["Donetsk","UA",2],["Douala","CM",2],["Douglas Bisbee","US",2],["Duluth","US",2],["Dung Quat Bay","VN",2],["Durango","MX",2],["Durazno","UY",2],["Dzaoudzi","YT",2],["Edmonton","CA",2],["Eilat","IL",2],["El Paso","US",2],["Eldoret","KE",2],["Enegu","NG",2],["Enfidha","TN",2],["Erenhot","CN",2],["Erie","US",2],["Espargos","CV",2],["Exeter","GB",2],["Fairbanks","US",2],["Faisalabad","PK",2],["Fargo","US",2],["Flint","US",2],["Florianopolis","BR",2],["Fort Myers","US",2],["Fort Pierce","US",2],["Fort Wayne","US",2],["Fort Worth","US",2],["Fort-de-France","MQ",2],["Fortaleza","BR",2],["Foz Do Iguacu","BR",2],["Franceville","GA",2],["Freeport","BS",2],["Freetown","SL",2],["Fresno","US",2],["Funafuti","TV",2],["Fuzhou","CN",2],["Gabala","AZ",2],["Gabes","TN",2],["Gaborone","BW",2],["Gafsa","TN",2],["Galveston","US",2],["Gan","MV",2],["Gander","CA",2],["Garoua","CM",2],["Gary","US",2],["General Santos","PH",2],["George Town","BS",2],["Georgetown","KY",2],["Georgetown","GY",2],["Glasgow","US",2],["Goma","CD",2],["Gombe","NG",2],["Grand Forks","US",2],["Grand Rapids","US",2],["Great Falls","US",2],["Green Bay","US",2],["Greensboro","US",2],["Greenville","US",2],["Guayaquil","EC",2],["Guaymas","MX",2],["Guilin City","CN",2],["Gulfport","US",2],["Guwahati","IN",2],["Gwadar","PK",2],["Gwangju","KR",2],["Gyor","HU",2],["Hagatna","GU",2],["Haifa","IL",2],["Haikou","CN",2],["Haiphong","VN",2],["Halifax","CA",2],["Hamilton","CA",2],["Hamilton","NZ",2],["Hamilton","BM",2],["Harare","ZW",2],["Hargeisa","SO",2],["Harlingen","US",2],["Harrisburg","US",2],["Hartford","US",2],["Hat Yai","TH",2],["Havana","CU",2],["Hefei","CN",2],["Hermosillo","MX",2],["Hilo","US",2],["Hodeida","YE",2],["Hohhot","CN",2],["Holguin","CU",2],["Honiara","SB",2],["Honolulu","US",2],["Houlton","US",2],["Huangshan","CN",2],["Huatulco","MX",2],["Huntsville","US",2],["Iloilo City","PH",2],["Ilorin","NG",2],["Indianapolis","US",2],["International Falls","US",2],["Iquitos","PE",2],["Isfahan","IR",2],["Isla Colon","PA",2],["Isla Margarita","VE",2],["Ivano-Frankivsk","UA",2],["Ixtapa","MX",2],["Jackson","US",2],["Jacksonville","US",2],["Jaipur","IN",2],["Jayapura-Papua Island","ID",2],["Jebel","TM",2],["Jeju City","KR",2],["Juliaca","PE",2],["Juneau","US",2],["Kabul","AF",2],["Kaieteur Falls","GY",2],["Kailua/Kona","US",2],["Kalamazoo","US",2],["Kalibo","PH",2],["Kalispell","US",2],["Kampala","UG",2],["Kano","NG",2],["Kaohsiung City","TW",2],["Kariba","ZW",2],["Karlovy Vary","CZ",2],["Katowice","PL",2],["Kaunas","LT",2],["Kavala","GR",2],["Kazan","RU",2],["Kerki","TM",2],["Kertajati","ID",2],["Ketchikan","US",2],["Key West","US",2],["Kharkiv","UA",2],["Khartoum","SD",2],["Kiev","UA",2],["Kigali","RW",2],["Kingston","JM",2],["Kinshasa","CD",2],["Kisangani","CD",2],["Kish Island","IR",2],["Kogalym","RU",2],["Kota Kinabalu","MY",2],["Kralendijk","BQ",2],["Krasnodar","RU",2],["Kryvyi Rih","UA",2],["Kuching","MY",2],["Kunming","CN",2],["Kurgan-Tyube","TJ",2],["Kushinagar","IN",2],["La Ceiba","HN",2],["La Isabela","DO",2],["La Mesa","HN",2],["La Paz","MX",2],["La Paz / El Alto","BO",2],["La Romana","DO",2],["Lake Charles","US",2],["Lankaran","AZ",2],["Lansing","US",2],["Laoag City","PH",2],["Laredo","US",2],["Larnarca","CY",2],["Las Cruces","US",2],["Latacunga","EC",2],["Latakia","SY",2],["Lawrenceville","US",2],["Leesburg","US",2],["Legazpi City","PH",2],["Leticia","CO",2],["Liberia","CR",2],["Liepaja","LV",2],["Lilongwe","MW",2],["Loreto","MX",2],["Los Mochis","MX",2],["Louisville","US",2],["Luanda","AO",2],["Luang Phabang","LA",2],["Lubbock","US",2],["Lubumbashi","CD",2],["Lucknow","IN",2],["Luganville","VU",2],["Luhansk","UA",2],["Lusaka","ZM",2],["Lviv","UA",2],["Maafaru","MV",2],["Mafeking","ZA",2],["Magnitogorsk","RU",2],["Mahe Island","SC",2],["Maiduguri","NG",2],["Majuro Atoll","MH",2],["Managua","NI",2],["Manaus","BR",2],["Mandalay","MM",2],["Mangalore","IN",2],["Manston","GB",2],["Manta","EC",2],["Manzanillo","MX",2],["Manzini","SZ",2],["Mar del Plata","AR",2],["Maracaibo","VE",2],["Mariscal Estigarribia","PY",2],["Mariupol","UA",2],["Marquette","US",2],["Marsh Harbour","BS",2],["Maseru","LS",2],["Mashhad","IR",2],["Massawa","ER",2],["Massena","US",2],["Masvingo","ZW",2],["Matamoros","MX",2],["Mataram","ID",2],["Mattala","LK",2],["Mattanur","IN",2],["Mazatlan","MX",2],["Mc Allen","US",2],["Medan-Sumatra Island","ID",2],["Medford","US",2],["Melbourne","US",2],["Melo","UY",2],["Memphis","US",2],["Merlo","AR",2],["Mexicali","MX",2],["Midland","US",2],["Milwaukee","US",2],["Minot","US",2],["Minsk","BY",2],["Missoula","US",2],["Mogadishu","SO",2],["Moline","US",2],["Monastir","TN",2],["Monclova","MX",2],["Moncton","CA",2],["Monrovia","LR",2],["Montego Bay","JM",2],["Monterrey","MX",2],["Montevideo","UY",2],["Monticello","US",2],["Mopa","IN",2],["Morelia","MX",2],["Moroni","KM",2],["Moses Lake","US",2],["Mostar","BA",2],["Mosul","IQ",2],["Mpumalanga","ZA",2],["Mudanjiang","CN",2],["Multan","PK",2],["Myrtle Beach","US",2],["Mytilene","GR",2],["N'Djamena","TD",2],["Nador","MA",2],["Najaf","IQ",2],["Nanchang","CN",2],["Naqpur","IN",2],["Nassau","BS",2],["Nausori","FJ",2],["Navegantes","BR",2],["Navi Mumbai","IN",2],["Ndola","ZM",2],["Newburgh","US",2],["Newport","US",2],["Newport News","US",2],["Niagara Falls","US",2],["Niamey","NE",2],["Niamtougou","TG",2],["Nicosia","CY",2],["Nikolayev","UA",2],["Ningbo","CN",2],["Nizhny Novgorod","RU",2],["Nogales","US",2],["Nogales","MX",2],["Noida","IN",2],["Norfolk","US",2],["Norwich","GB",2],["Nouadhibou","MR",2],["Nouakchott","MR",2],["Noumea","NC",2],["Nuevo Laredo","MX",2],["Nuku'alofa","TO",2],["Oakland","US",2],["Oaxaca","MX",2],["Ocala","US",2],["Odessa","UA",2],["Ogdensburg","US",2],["Okat","FM",2],["Olongapo City","PH",2],["Ontario","US",2],["Oradea","RO",2],["Oranjestad","AW",2],["Ostend","BE",2],["Owerri","NG",2],["Pago Pago","AS",2],["Pakse","LA",2],["Palanga","LT",2],["Palenque","MX",2],["Palm Springs","US",2],["Panama City","US",2],["Panama City","PA",2],["Panama City Beach","US",2],["Panglao","PH",2],["Papeete","PF",2],["Paphos","CY",2],["Paraguana","VE",2],["Pascagoula","US",2],["Pedro Juan Caballero","PY",2],["Pereira","CO",2],["Pescara","IT",2],["Peshawar","PK",2],["Piedras Negras","MX",2],["Pilanesberg","ZA",2],["Pisco","PE",2],["Piura","PE",2],["Plattsburgh","US",2],["Plovdiv","BG",2],["Pohnpei Island","FM",2],["Pokhara","NP",2],["Pontiac","US",2],["Port Angeles","US",2],["Port Blair","IN",2],["Port Harcourt","NG",2],["Port Hedland","AU",2],["Port Huron","US",2],["Port Louis","MU",2],["Port Moresby","PG",2],["Port Sudan","SD",2],["Port of Spain","TT",2],["Port-au-Prince","HT",2],["Portsmouth","US",2],["Potgietersrus","ZA",2],["Praia","CV",2],["Presque Isle","US",2],["Prishtina","KS",2],["Providence","US",2],["Pucallpa","PE",2],["Puebla","MX",2],["Puerto Cabello","VE",2],["Puerto Escondido","MX",2],["Puerto Iguazu","AR",2],["Puerto Limon","CR",2],["Puerto Maldonado","PE",2],["Puerto Ordaz-Ciudad Guayana","VE",2],["Puerto Penasco","MX",2],["Puerto Plata","DO",2],["Puerto Vallarta","MX",2],["Punta Cana","DO",2],["Punta del Este","UY",2],["Pyongyang","KP",2],["Qingdao","CN",2],["Quebec","CA",2],["Quetta","PK",2],["Rajkot","IN",2],["Rayong","TH",2],["Recife","BR",2],["Regina","CA",2],["Reno","US",2],["Resistencia","AR",2],["Reynosa","MX",2],["Richmond","US",2],["Riga","LV",2],["Rimini","IT",2],["Rio Grande","AR",2],["Rio Hato","PA",2],["Rionegro","CO",2],["Rivera","UY",2],["Riviere Rouge","CA",2],["Rivne","UA",2],["Riyan","YE",2],["Road Town","VG",2],["Roatan Island","HN",2],["Rochester","US",2],["Rome","US",2],["Rostov-on-Don","RU",2],["Roswell","US",2],["Rota Island","MP",2],["Sacramento","US",2],["Saginaw","US",2],["Saint George's","GD",2],["Saint Martin","SX",2],["Saipan Island","MP",2],["Salta","AR",2],["Saltillo","MX",2],["Salto","UY",2],["Salvador","BR",2],["Samana","DO",2],["Samara","RU",2],["Samarinda","ID",2],["San Andres","CO",2],["San Antonio","US",2],["San Benito","GT",2],["San Bernardino","US",2],["San Felipe","MX",2],["San Jose","US",2],["San Jose","CR",2],["San Jose del Cabo","MX",2],["San Juan","PR",2],["San Luis Potosi","MX",2],["San Salvador","SV",2],["San Salvador de Jujuy","AR",2],["Sana'a","YE",2],["Santa Clara","SV",2],["Santa Cruz","BO",2],["Santa Lucia","MX",2],["Santa Marta","CO",2],["Santiago","DO",2],["Santiago","CU",2],["Santo Domingo","DO",2],["Santo Domingo","VE",2],["Sanya","CN",2],["Sao Goncalo Do Amarante","BR",2],["Sao Luis","BR",2],["Sao Tome","ST",2],["Sarajevo","BA",2],["Sarasota/Bradenton","US",2],["Sarmellek","HU",2],["Saskatoon","CA",2],["Sault Ste Marie","US",2],["Savannah","US",2],["Sayun","YE",2],["Senai","MY",2],["Sfax","TN",2],["Shijiazhuang","CN",2],["Shiraz","IR",2],["Siauliai","LT",2],["Sibiu","RO",2],["Siborong-Borong","ID",2],["Sihanukville","KH",2],["Silao","MX",2],["Simferopol","UA",2],["Sochi","RU",2],["Socotra Islands","YE",2],["Sokcho / Gangneung","KR",2],["Sokoto","NG",2],["Souda","GR",2],["Spokane","US",2],["St Petersburg-Clearwater","US",2],["St. George","AG",2],["St. John's","CA",2],["Strymba","MD",2],["Subang","MY",2],["Sucre","BO",2],["Sulaymaniyah","IQ",2],["Sylhet","BD",2],["Syracuse","US",2],["Ta'izz","YE",2],["Tabriz","IR",2],["Tacna","PE",2],["Tamchy","KG",2],["Tampico","MX",2],["Tapachula","MX",2],["Tarawa","KI",2],["Targu Mures","RO",2],["Tashkent","UZ",2],["Tbilisi","GE",2],["Tegucigalpa","HN",2],["Tehran","IR",2],["Ternopil","UA",2],["Terre Haute","US",2],["Tianjin","CN",2],["Tijuana","MX",2],["Tinian Island","MP",2],["Tirana","AL",2],["Toluca","MX",2],["Torino","IT",2],["Torreon","MX",2],["Tozeur","TN",2],["Tripoli","LY",2],["Trujillo","PE",2],["Tucson","US",2],["Tulsa","US",2],["Tulum","MX",2],["Turbat","PK",2],["Turkistan","KZ",2],["Turkmenabat","TM",2],["Tuxtla Gutierrez","MX",2],["Tuzla","BA",2],["Tyumen","RU",2],["Ufa","RU",2],["Ujung Pandang-Celebes Island","ID",2],["Ulaanbaatar","MN",2],["Ulan Bator","MN",2],["Union Island","VC",2],["Urumqi","CN",2],["Uzhhorod","UA",2],["Valencia","VE",2],["Varadero","CU",2],["Vava'u Island","TO",2],["Ventspils","LV",2],["Veracruz","MX",2],["Victoria","CA",2],["Victoria Falls","ZW",2],["Vieux Fort","LC",2],["Villahermosa","MX",2],["Vilnius","LT",2],["Vladivostok","RU",2],["Volgograd","RU",2],["Voronezh","RU",2],["V\u00e2n \u0110\u1ed3n","VN",2],["Warroad","US",2],["Watertown","US",2],["Weerawila","LK",2],["Weno Island","FM",2],["West Palm Beach","US",2],["Wewak","PG",2],["Whitehorse","CA",2],["Wilkes-Barre/Scranton","US",2],["Willemstad","CW",2],["Williston","US",2],["Wilmington","US",2],["Windhoek","NA",2],["Winnipeg","CA",2],["Wuxi","CN",2],["Xiamen","CN",2],["Yaounde","CM",2],["Yap Island","FM",2],["Yaren District","NR",2],["Yarom","TH",2],["Yerevan","AM",2],["Yogyakarta","ID",2],["Yogyakarta-Java Island","ID",2],["Yuma","US",2],["Zacatecas","MX",2],["Zahedan","IR",2],["Zamboanga City","PH",2],["Zandery","SR",2],["Zangilan","AZ",2],["Zaporizhia","UA",2],["Zaqatala","AZ",2],["108 Mile","CA",3],["Aachen","DE",3],["Aalborg","DK",3],["Aarhus","DK",3],["Aasiaat","GL",3],["Abadan","IR",3],["Abaiang","KI",3],["Abakan","RU",3],["Abariringa","KI",3],["Abbeville (Buigny/Saint-Maclou)","FR",3],["Abbotsford","CA",3],["Abbottabad","PK",3],["Abeche","TD",3],["Abemama Atoll","KI",3],["Abengourou","CI",3],["Aberdeen","GB",3],["Aberdeen","US",3],["Aberdeen Proving Grounds(Aberdeen)","US",3],["Abidjan","CI",3],["Abilene","US",3],["Abingdon","US",3],["Ablow","VU",3],["Aboisso","CI",3],["Abs","YE",3],["Abu Musa","IR",3],["Acandi","CO",3],["Acarigua","VE",3],["Achinsk","RU",3],["Ad Damazin","SD",3],["Ada","US",3],["Adado","SO",3],["Adak Island","US",3],["Adrar","DZ",3],["Adrian","US",3],["Aeng","MM",3],["Afore","PG",3],["Afton","US",3],["Agadir","MA",3],["Agartala","IN",3],["Agatti","IN",3],["Agen/La Garenne","FR",3],["Aggeneys","ZA",3],["Agra","IN",3],["Agrinion","GR",3],["Agua Boa","BR",3],["Aguachica","CO",3],["Aguadilla","PR",3],["Aguni","JP",3],["Ahe Atoll","PF",3],["Ahuas","HN",3],["Ahwaz","IR",3],["Aiken","US",3],["Aima Ata","KZ",3],["Ainsworth","US",3],["Aiome","PG",3],["Aioun El Atrouss","MR",3],["Airlie Beach","AU",3],["Aishalton","GY",3],["Aitape","PG",3],["Aitutaki","CK",3],["Aiyura Valley","PG",3],["Aizawl","IN",3],["Ajaccio","FR",3],["Ajaccio/Napoleon Bonaparte","FR",3],["Akhiok","US",3],["Akiak","US",3],["Akita","JP",3],["Aki\u00e9ni","GA",3],["Akjoujt","MR",3],["Aklavik","CA",3],["Akola","IN",3],["Akrotiri","CY",3],["Aksu","CN",3],["Aktau","KZ",3],["Aktyubinsk","KZ",3],["Akulivik","CA",3],["Akure","NG",3],["Akureyri","IS",3],["Al Bayda'","LY",3],["Al Habbaniyah","IQ",3],["Al Hoceima","MA",3],["Al-Bayda","YE",3],["Al-Ubayyid","SD",3],["Alagoinhas","BR",3],["Alajero","ES",3],["Alakanuk","US",3],["Alamogordo","US",3],["Alamosa","US",3],["Alava","ES",3],["Albacete","ES",3],["Albany","AU",3],["Albert Lea","US",3],["Albert/Bray","FR",3],["Albi/Le Sequestre","FR",3],["Albian Village","CA",3],["Albina","SR",3],["Albury","AU",3],["Aldan","RU",3],["Alegrete","BR",3],["Alenquer","BR",3],["Alert","CA",3],["Alert Bay","CA",3],["Ales/Deaux","FR",3],["Alesund","NO",3],["Alexander Bay","ZA",3],["Alexander City","US",3],["Alexandra","NZ",3],["Alexandroupolis","GR",3],["Alghero","IT",3],["Algona","US",3],["Ali-Sabieh","DJ",3],["Alice Springs","AU",3],["Aliceville","US",3],["Aligarth","IN",3],["Allahabad","IN",3],["Allakaket","US",3],["Alldays","ZA",3],["Alliance","US",3],["Alma","CA",3],["Alma","US",3],["Almaty","KZ",3],["Almeirim","BR",3],["Almenara","BR",3],["Along","IN",3],["Alor Island","ID",3],["Alor Satar","MY",3],["Alpena","US",3],["Alpha","AU",3],["Alpurrurulam","AU",3],["Alstahaug","NO",3],["Alta","NO",3],["Alta Floresta","BR",3],["Altai","MN",3],["Altamira","BR",3],["Altay","CN",3],["Altenburg","DE",3],["Altenrhein","CH",3],["Alto Palena","CL",3],["Alto Parnaiba","BR",3],["Alto Rio Senguerr","AR",3],["Alton/St Louis","US",3],["Altoona","US",3],["Altus","US",3],["Alula","SO",3],["Alverca","PT",3],["Am Timan","TD",3],["Amahai-Seram Island","ID",3],["Amakusa","JP",3],["Amalfi","CO",3],["Amami","JP",3],["Amanab","PG",3],["Amata","AU",3],["Ambanja","MG",3],["Ambato","EC",3],["Ambatondrazaka","MG",3],["Ambilobe","MG",3],["Ambler","US",3],["Ambon","ID",3],["Amboseli National Park","KE",3],["Ambriz","AO",3],["Ambryn Island","VU",3],["Ambunti","PG",3],["Amderma","RU",3],["Amenas","DZ",3],["Amery","US",3],["Ames","US",3],["Amgu","RU",3],["Amiens/Glisy","FR",3],["Amol","IR",3],["Amos","CA",3],["Ampanihy","MG",3],["Ampara","LK",3],["Anaco","VE",3],["Anadyr","RU",3],["Anahim Lake","CA",3],["Anaktuvuk Pass","US",3],["Analalava","MG",3],["Anapa","RU",3],["Anapolis","BR",3],["Ancona","IT",3],["Ancud","CL",3],["Andahuaylas","PE",3],["Andamooka","AU",3],["Andapa","MG",3],["Andekombe","PG",3],["Andenes","NO",3],["Andersen","GU",3],["Anderson","US",3],["Andes","CO",3],["Andijan","UZ",3],["Andoas","PE",3],["Andravida","GR",3],["Andrews","US",3],["Andros","BS",3],["Andros Island","BS",3],["Andros Town","BS",3],["Anegada","VG",3],["Anelghowhat","VU",3],["Angaha","TO",3],["Angel Fire","US",3],["Angelholm","SE",3],["Angelsey","GB",3],["Angers","FR",3],["Angers/Marce","FR",3],["Angleton/Lake Jackson","US",3],["Angling Lake","CA",3],["Angoche","MZ",3],["Angola","US",3],["Angoon","US",3],["Angouleme/Brie/Champniers","FR",3],["Aniak","US",3],["Aniwa","VU",3],["Ankang","CN",3],["Ankavandra","MG",3],["Ankazoabo","MG",3],["Ann Arbor","US",3],["Annabah","DZ",3],["Annai","GY",3],["Annapolis","US",3],["Annecy","FR",3],["Annecy/Meythet","FR",3],["Annemasse","FR",3],["Annette","US",3],["Anniston","US",3],["Anqing","CN",3],["Ansbach","DE",3],["Anshan","CN",3],["Anshun","CN",3],["Anta","PE",3],["Antalaha","MG",3],["Antananarivo","MG",3],["Anthony","US",3],["Antlers","US",3],["Antofagasta","CL",3],["Antsalova","MG",3],["Antsirabe","MG",3],["Antsiranana","MG",3],["Antsohihy","MG",3],["Anua","SB",3],["Anuradhapura","LK",3],["Anvik","US",3],["Anyang","CN",3],["Aomori","JP",3],["Aosta","IT",3],["Apalachicola","US",3],["Apataki","PF",3],["Apatity","RU",3],["Apiay","CO",3],["Apizaco","MX",3],["Apolo","BO",3],["Apple Valley","US",3],["Apucarana","BR",3],["Araak","IR",3],["Aracaju","BR",3],["Aracatuba","BR",3],["Aragarcas","BR",3],["Araguaina","BR",3],["Aral","CN",3],["Aramac","AU",3],["Arandis","NA",3],["Arapahoe","US",3],["Arapiraca","BR",3],["Arapongas","BR",3],["Arapoti","BR",3],["Araracuara","CO",3],["Araraquara","BR",3],["Ararat","AU",3],["Araripina","BR",3],["Aratika","PF",3],["Arauca","CO",3],["Araxa","BR",3],["Arba Minch","ET",3],["Arbatax","IT",3],["Arcachon/La Teste-de-Buch","FR",3],["Arcata/Eureka","US",3],["Archangelsk","RU",3],["Arctic Bay","CA",3],["Arctic Village","US",3],["Ardabil","IR",3],["Ardmore","US",3],["Arecibo","PR",3],["Arezzo","IT",3],["Aribinda","BF",3],["Arica","CL",3],["Aripuan\u00e3","BR",3],["Ariquemes","BR",3],["Arkalyk","KZ",3],["Arkhangelsk","RU",3],["Arlit","NE",3]];
+const AIRLINES=[["SV","Saudia"],["XY","flynas"],["F3","flyadeal"],["RX","Riyadh Air"],["EK","Emirates"],["EY","Etihad Airways"],["FZ","flydubai"],["G9","Air Arabia"],["QR","Qatar Airways"],["GF","Gulf Air"],["KU","Kuwait Airways"],["J9","Jazeera Airways"],["WY","Oman Air"],["OV","SalamAir"],["RJ","Royal Jordanian"],["MS","EgyptAir"],["NP","Nile Air"],["ME","Middle East Airlines"],["LY","El Al"],["IR","Iran Air"],["IA","Iraqi Airways"],["TK","Turkish Airlines"],["PC","Pegasus Airlines"],["XQ","SunExpress"],["AT","Royal Air Maroc"],["TU","Tunisair"],["AH","Air Algerie"],["LN","Libyan Airlines"],["BA","British Airways"],["VS","Virgin Atlantic"],["U2","easyJet"],["FR","Ryanair"],["W6","Wizz Air"],["LS","Jet2"],["BY","TUI Airways"],["EI","Aer Lingus"],["AF","Air France"],["KL","KLM"],["LH","Lufthansa"],["LX","SWISS"],["OS","Austrian Airlines"],["SN","Brussels Airlines"],["EW","Eurowings"],["DE","Condor"],["AZ","ITA Airways"],["IB","Iberia"],["VY","Vueling"],["UX","Air Europa"],["TP","TAP Air Portugal"],["SK","SAS"],["DY","Norwegian"],["AY","Finnair"],["FI","Icelandair"],["A3","Aegean Airlines"],["OA","Olympic Air"],["LO","LOT Polish Airlines"],["OK","Czech Airlines"],["RO","TAROM"],["JU","Air Serbia"],["OU","Croatia Airlines"],["SU","Aeroflot"],["PS","Ukraine Intl"],["HV","Transavia"],["TO","Transavia France"],["V7","Volotea"],["NO","Neos"],["AA","American Airlines"],["UA","United Airlines"],["DL","Delta Air Lines"],["AS","Alaska Airlines"],["B6","JetBlue"],["WN","Southwest Airlines"],["NK","Spirit Airlines"],["F9","Frontier Airlines"],["HA","Hawaiian Airlines"],["AC","Air Canada"],["WS","WestJet"],["PD","Porter Airlines"],["AM","Aeromexico"],["Y4","Volaris"],["SQ","Singapore Airlines"],["TR","Scoot"],["MH","Malaysia Airlines"],["AK","AirAsia"],["D7","AirAsia X"],["TG","Thai Airways"],["FD","Thai AirAsia"],["SL","Thai Lion Air"],["VN","Vietnam Airlines"],["VJ","VietJet Air"],["GA","Garuda Indonesia"],["JT","Lion Air"],["QZ","Indonesia AirAsia"],["PR","Philippine Airlines"],["5J","Cebu Pacific"],["CX","Cathay Pacific"],["HX","Hong Kong Airlines"],["UO","HK Express"],["CI","China Airlines"],["BR","EVA Air"],["JX","STARLUX Airlines"],["NH","ANA"],["JL","Japan Airlines"],["MM","Peach Aviation"],["GK","Jetstar Japan"],["KE","Korean Air"],["OZ","Asiana Airlines"],["7C","Jeju Air"],["LJ","Jin Air"],["CA","Air China"],["MU","China Eastern"],["CZ","China Southern"],["HU","Hainan Airlines"],["3U","Sichuan Airlines"],["MF","Xiamen Air"],["ZH","Shenzhen Airlines"],["9C","Spring Airlines"],["AI","Air India"],["IX","Air India Express"],["6E","IndiGo"],["SG","SpiceJet"],["UK","Vistara"],["QP","Akasa Air"],["UL","SriLankan Airlines"],["Q2","Maldivian"],["PK","Pakistan Intl"],["BS","US-Bangla Airlines"],["BG","Biman Bangladesh"],["RA","Nepal Airlines"],["KB","Drukair"],["QF","Qantas"],["JQ","Jetstar"],["VA","Virgin Australia"],["NZ","Air New Zealand"],["FJ","Fiji Airways"],["ET","Ethiopian Airlines"],["KQ","Kenya Airways"],["SA","South African Airways"],["FA","Safair"],["WB","RwandAir"],["TM","LAM Mozambique"],["P4","Air Peace"],["LA","LATAM Airlines"],["AV","Avianca"],["CM","Copa Airlines"],["G3","Gol"],["AD","Azul"],["AR","Aerolineas Argentinas"],["H2","SKY Airline"],["JA","JetSMART"]];
+
 /* ============================= CONFIG ============================= */
 /* Travel project (dhmuvplhynycpzzhidxb). Shares nothing with the family
    ledger - separate database, separate accounts, separate PINs. */
@@ -672,20 +854,42 @@ const KINDS = [
   {id:'hotel',    label:'Hotel',    ic:'\uD83C\uDFE8', color:'#b8863f', route:false},
   {id:'activity', label:'Activity', ic:'\uD83C\uDFAB', color:'#8a5fa8', route:false},
   {id:'dining',   label:'Dining',   ic:'\uD83C\uDF7D\uFE0F', color:'#b84a34', route:false},
-  {id:'visa',     label:'Visa',     ic:'\uD83D\uDEC2', color:'#a68f2e', route:false, doc:true},
 ];
+
+/* Documents live in their own table. Passports and ID cards are metadata
+   only - the database refuses to store a scan against them. */
+const DOC_TYPES = [
+  {id:'passport',  label:'Passport',  ic:'\uD83D\uDCD4', color:'#4c6fa0', file:false, person:true},
+  {id:'visa',      label:'Visa',      ic:'\uD83D\uDEC2', color:'#a68f2e', file:true},
+  {id:'insurance', label:'Insurance', ic:'\uD83D\uDEE1\uFE0F', color:'#2f7a6b', file:true},
+  {id:'ticket',    label:'Ticket',    ic:'\uD83C\uDFAB', color:'#b8863f', file:true},
+  {id:'id',        label:'ID card',   ic:'\uD83E\uDEAA', color:'#6b5b95', file:false, person:true},
+  {id:'other',     label:'Other',     ic:'\uD83D\uDCC4', color:'#6b7280', file:true},
+];
+function docType(id){ return DOC_TYPES.find(d=>d.id===id) || DOC_TYPES[1]; }
+
+const VISA_STATUS = [
+  {id:'not_started', label:'Not started', tone:'idle'},
+  {id:'submitted',   label:'Submitted',   tone:'warn'},
+  {id:'approved',    label:'Approved',    tone:'ok'},
+  {id:'rejected',    label:'Rejected',    tone:'bad'},
+];
+const HELD_STATUS = [
+  {id:'not_started', label:'Not arranged', tone:'idle'},
+  {id:'approved',    label:'In hand',      tone:'ok'},
+];
+function docStatusSet(t){ return t==='visa' ? VISA_STATUS : HELD_STATUS; }
+function docStatusInfo(d){
+  const set = docStatusSet(d.doc_type);
+  return set.find(x=>x.id===d.status) || set[0];
+}
 
 const BOOK_STATUS = [
   {id:'confirmed', label:'Confirmed', tone:'ok'},
   {id:'pending',   label:'Not booked', tone:'warn'},
   {id:'cancelled', label:'Cancelled', tone:'idle'},
 ];
-const DOC_STATUS = [
-  {id:'not_started', label:'Not started', tone:'idle'},
-  {id:'submitted',   label:'Submitted', tone:'warn'},
-  {id:'approved',    label:'Approved', tone:'ok'},
-  {id:'rejected',    label:'Rejected', tone:'bad'},
-];
+
 
 /* ============================= STATE ============================= */
 let currentUser = null;
@@ -695,6 +899,15 @@ let items = [];
 let travellers = [];      // everyone who can appear on a trip, app login or not
 let tripRoster = [];      // {trip_id, traveller_id}
 let attachments = [];
+let documents = [];
+let lookups = [];         // airports, cities and airlines the family typed in
+let tripScope = 'active'; // active | past
+let docScope = 'all';     // all | mine
+let editingDocId = null;
+let docType_ = 'visa';
+let docStatus_ = 'not_started';
+let pendingDocFile = null;
+let itemAirlineCode = '', itemFromCode = '', itemToCode = '';
 let pendingFiles = [];    // files chosen before the item exists yet
 let tripTravSel = [];     // traveller ids selected in the trip modal
 let pendingUsername = null;
@@ -717,11 +930,8 @@ function familyOf(username){ return FAMILY.find(f=>f.username===username); }
 function initials(name){ return (name||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function kindInfo(id){ return KINDS.find(k=>k.id===id) || KINDS[KINDS.length-1]; }
-function statusSet(kind){ return kindInfo(kind).doc ? DOC_STATUS : BOOK_STATUS; }
-function statusInfo(kind, id){
-  const set = statusSet(kind);
-  return set.find(s=>s.id===id) || set[0];
-}
+function statusSet(){ return BOOK_STATUS; }
+function statusInfo(kind, id){ return BOOK_STATUS.find(s=>s.id===id) || BOOK_STATUS[0]; }
 function canEdit(){ return currentUser && ['head','secretary','organiser'].includes(currentUser.role); }
 function roleLabel(r){ return r==='head' ? 'Head of the family' : r==='secretary' ? 'Secretary' : r==='organiser' ? 'Organiser' : 'Viewer'; }
 function profileFor(id){ return profiles.find(p=>p.id===id); }
@@ -744,6 +954,21 @@ function fmtRange(a,b){
 function fmtTime(t){ return t ? String(t).slice(0,5) : ''; }
 function daysUntil(s){ const d=d0(s); if(!d) return null; const n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+function countdownLabel(days){
+  if(days === null || days === undefined) return '';
+  if(days < 0)  return 'Under way';
+  if(days === 0) return 'Leaving today';
+  if(days === 1) return '1 day to go';
+  if(days <= 60) return days + ' days to go';
+  const months = Math.round(days / 30.44);
+  return months + ' months to go';
+}
+function isArchived(t){
+  if(t.archived === true)  return true;
+  if(t.archived === false) return false;
+  const d = daysUntil(t.end_date);
+  return d !== null && d < -365;
+}
 function itemSort(a,b){ return (`${a.start_date||'9999'}T${a.start_time||'99:99'}`).localeCompare(`${b.start_date||'9999'}T${b.start_time||'99:99'}`); }
 function forMe(it){
   const w = it.member_ids || [];
@@ -825,6 +1050,8 @@ async function handleRecoveryComplete(){
 async function init(){
   buildPad('keypad', pinInput);
   buildKindGrid();
+  buildDocTypeGrid();
+  wirePickers();
   if(!CONFIGURED){
     document.querySelector('.boot-spinner').style.display = 'none';
     document.getElementById('boot-loading-text').innerHTML =
@@ -1101,6 +1328,8 @@ async function enterAppFromSession(authUser){
     await loadTripRoster();
     await loadItems();
     await loadAttachments();
+    await loadDocuments();
+    await loadLookups();
   }catch(e){
     console.error('enterAppFromSession failed:', e);
     document.getElementById('boot-loading').style.display='none';
@@ -1113,6 +1342,7 @@ async function enterAppFromSession(authUser){
   document.getElementById('main-app').style.display='block';
   document.getElementById('navbar').style.display='flex';
   document.getElementById('nav-add').style.display = canEdit() ? 'flex' : 'none';
+  document.getElementById('docs-add').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('home-add-trip').style.display = canEdit() ? 'block' : 'none';
   document.getElementById('trip-edit-btn').style.display = canEdit() ? 'flex' : 'none';
   document.getElementById('tb-name').textContent = currentUser.name.split(' ')[0];
@@ -1147,6 +1377,16 @@ async function loadTripRoster(){
   if(error){ console.error(error); tripRoster = []; return; }
   tripRoster = data || [];
 }
+async function loadDocuments(){
+  const { data, error } = await sb.from('documents').select('*');
+  if(error){ console.error(error); documents = []; return; }
+  documents = data || [];
+}
+async function loadLookups(){
+  const { data, error } = await sb.from('lookup_entries').select('*');
+  if(error){ console.error(error); lookups = []; return; }
+  lookups = data || [];
+}
 async function loadAttachments(){
   const { data, error } = await sb.from('attachments').select('*').order('created_at');
   if(error){ console.error(error); attachments = []; return; }
@@ -1154,7 +1394,8 @@ async function loadAttachments(){
 }
 async function refreshInBackground(thenTab){
   try{
-    await loadTrips(); await loadTripRoster(); await loadItems(); await loadAttachments();
+    await loadTrips(); await loadTripRoster(); await loadItems();
+    await loadAttachments(); await loadDocuments();
     if(activeTab===thenTab){
       if(thenTab==='home') renderHome();
       if(thenTab==='trip') renderTrip();
@@ -1164,7 +1405,8 @@ async function refreshInBackground(thenTab){
 }
 function logout(){
   sb.auth.signOut();
-  currentUser=null; profiles=[]; trips=[]; items=[]; travellers=[]; tripRoster=[]; attachments=[];
+  currentUser=null; profiles=[]; trips=[]; items=[]; travellers=[];
+  tripRoster=[]; attachments=[]; documents=[]; lookups=[];
   document.getElementById('main-app').style.display='none';
   document.getElementById('navbar').style.display='none';
   showLoginScreen();
@@ -1195,28 +1437,39 @@ function quickAdd(){
 function tripItems(tripId){ return items.filter(i=>i.trip_id===tripId); }
 function upcomingTrips(){
   const t = todayISO();
-  return trips.filter(x=> !x.end_date || x.end_date >= t)
+  return trips.filter(x=> !isArchived(x) && (!x.end_date || x.end_date >= t))
               .sort((a,b)=> (a.start_date||'9999').localeCompare(b.start_date||'9999'));
 }
 function pastTrips(){
   const t = todayISO();
-  return trips.filter(x=> x.end_date && x.end_date < t)
+  return trips.filter(x=> !isArchived(x) && x.end_date && x.end_date < t)
               .sort((a,b)=> (b.start_date||'').localeCompare(a.start_date||''));
 }
+function archivedTrips(){
+  return trips.filter(isArchived)
+              .sort((a,b)=> (b.start_date||'').localeCompare(a.start_date||''));
+}
+function docsForTrip(tripId){
+  // trip-level documents, plus person-level ones held by travellers on it
+  const onTrip = travellersOn(tripId).map(t=>t.id);
+  return documents.filter(d =>
+    (d.trip_id === tripId) ||
+    (!d.trip_id && onTrip.includes(d.traveller_id))
+  );
+}
 function readiness(tripId){
-  const list = tripItems(tripId);
-  const bookings = list.filter(i=>!kindInfo(i.kind).doc && i.status!=='cancelled');
-  const docs = list.filter(i=>kindInfo(i.kind).doc);
+  const bookings = tripItems(tripId).filter(i=>i.status!=='cancelled');
+  const docs = docsForTrip(tripId);
   const bookOk = bookings.filter(i=>i.status==='confirmed').length;
-  const docOk = docs.filter(i=>i.status==='approved').length;
+  const docOk = docs.filter(d=>d.status==='approved').length;
   const total = bookings.length + docs.length;
-  const ok = bookOk + docOk;
-  return { bookOk, bookTotal:bookings.length, docOk, docTotal:docs.length, pct: total? ok/total : 0, total };
+  return { bookOk, bookTotal:bookings.length, docOk, docTotal:docs.length,
+           pct: total ? (bookOk+docOk)/total : 0, total };
 }
 function nextItemForMe(){
   const now = `${todayISO()}T00:00`;
   return items
-    .filter(i=> !kindInfo(i.kind).doc && i.start_date && forMe(i) && i.status!=='cancelled')
+    .filter(i=> i.start_date && forMe(i) && i.status!=='cancelled')
     .filter(i=> `${i.start_date}T${i.start_time||'00:00'}` >= now)
     .sort(itemSort)[0] || null;
 }
@@ -1245,15 +1498,19 @@ function renderHome(){
     const r = readiness(trip.id);
     const days = daysUntil(trip.start_date);
     const next = nextItemForMe();
-    const dayLabel = days===null ? '\u2014' : (days<0 ? 'now' : days);
-    const unit = days===null ? 'dates to confirm' : (days<0 ? 'travelling' : days===0 ? 'leaving today' : days===1 ? 'day to go' : 'days to go');
+    const big = days===null ? '\u2014' : (days<0 ? '\u2708' : days <= 60 ? days : Math.round(days/30.44));
+    const unit = days===null ? 'dates to confirm'
+               : days<0 ? 'under way'
+               : days===0 ? 'leaving today'
+               : days<=60 ? (days===1 ? 'day to go' : 'days to go')
+               : (Math.round(days/30.44)===1 ? 'month to go' : 'months to go');
     wrap.innerHTML = `
       <div class="dial-card">
         <div class="dial-trip-line">${escapeHtml(trip.title||'').toUpperCase()}</div>
         <div class="dial-wrap">
           ${ringSvg(r.pct, 'var(--gold)')}
           <div class="dial-center">
-            <div class="big">${dayLabel}</div>
+            <div class="big">${big}</div>
             <div class="unit">${unit}</div>
           </div>
         </div>
@@ -1279,7 +1536,8 @@ function renderHome(){
 function tripCardHtml(trip, isPast){
   const r = readiness(trip.id);
   const days = daysUntil(trip.start_date);
-  const cd = (!isPast && days!==null && days>=0) ? `<span class="cd">${days===0?'TODAY':days+'D'}</span>` : '';
+  const cd = (!isPast && days!==null && days>=0)
+    ? `<span class="cd">${escapeHtml(countdownLabel(days))}</span>` : '';
   const route = [trip.origin, trip.destination].filter(Boolean).join(' \u2192 ');
   return `<div class="trip-card ${isPast?'past':''}" onclick="openTrip('${trip.id}')">
     <div class="tc-top">
@@ -1294,20 +1552,24 @@ function tripCardHtml(trip, isPast){
   </div>`;
 }
 
+function setTripScope(scope){
+  tripScope = scope;
+  document.querySelectorAll('#home-seg button').forEach((b,i)=>
+    b.classList.toggle('on', (i===0) === (scope==='active')));
+  renderTripsList();
+}
 function renderTripsList(){
   const el = document.getElementById('trips-list');
-  const up = upcomingTrips(), past = pastTrips();
-  let html = '';
-  if(up.length===0 && past.length===0){
-    html = `<div class="empty-state">Nothing here yet.</div>`;
-  } else {
-    html += up.map(t=>tripCardHtml(t,false)).join('');
-    if(past.length){
-      html += `<div class="section-label"><div class="eyebrow">PAST TRIPS</div></div>`;
-      html += past.map(t=>tripCardHtml(t,true)).join('');
-    }
-  }
-  el.innerHTML = html;
+  const past = tripScope === 'past';
+  const list = past ? pastTrips() : upcomingTrips();
+  document.getElementById('trips-heading').textContent = past ? 'PAST TRIPS' : 'COMING UP';
+  document.getElementById('home-add-trip').style.display =
+    (canEdit() && !past) ? 'block' : 'none';
+  el.innerHTML = list.length
+    ? list.map(t=>tripCardHtml(t, past)).join('')
+    : `<div class="empty-state">${past ? 'No past trips yet.'
+        : (canEdit() ? 'No trips planned. Tap <strong>+</strong> to start one.'
+                     : 'Nothing planned that you are travelling on.')}</div>`;
 }
 
 /* ============================= TRIP DETAIL ============================= */
@@ -1331,7 +1593,7 @@ function renderTrip(){
   head.innerHTML = `
     <h1>${escapeHtml(trip.title||'Untitled trip')}</h1>
     ${route ? `<div class="th-route">${escapeHtml(route)}</div>` : ''}
-    <div class="th-dates">${fmtRange(trip.start_date, trip.end_date)}${(days!==null&&days>=0)?` &middot; ${days===0?'LEAVING TODAY':days+' DAYS TO GO'}`:''}</div>
+    <div class="th-dates">${fmtRange(trip.start_date, trip.end_date)}${(days!==null&&days>=0)?` &middot; ${escapeHtml(countdownLabel(days).toUpperCase())}`:''}</div>
     ${trip.notes ? `<div class="th-notes">${escapeHtml(trip.notes)}</div>` : ''}
     ${(()=>{ const on = travellersOn(trip.id); return on.length ? `<div class="trav-strip">${on.map(t=>`
       <span class="trav-pill"><span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}</span>`).join('')}</div>` : ''; })()}`;
@@ -1344,8 +1606,14 @@ function renderTrip(){
 
   let list = tripItems(trip.id);
   if(tripFilterMine) list = list.filter(forMe);
-  const sched = list.filter(i=>!kindInfo(i.kind).doc).sort(itemSort);
-  const docs = list.filter(i=>kindInfo(i.kind).doc).sort(itemSort);
+  const sched = list.slice().sort(itemSort);
+  let docs = docsForTrip(trip.id);
+  if(tripFilterMine){
+    const mine = myTravellerId();
+    docs = docs.filter(d=>d.traveller_id===mine);
+  }
+  docs.sort((a,b)=> (travName(a.traveller_id)).localeCompare(travName(b.traveller_id)));
+  renderReadiness(trip);
 
   let html = '';
   if(sched.length===0){
@@ -1366,13 +1634,81 @@ function renderTrip(){
     html += '</div>';
   }
 
-  html += `<div class="section-label"><div class="eyebrow">VISAS &amp; DOCUMENTS</div></div>`;
-  html += docs.length ? docs.map(docCardHtml).join('')
-        : `<div class="empty-state">No documents tracked for this trip.</div>`;
+  html += `<div class="section-label"><div class="eyebrow">VISAS &amp; DOCUMENTS</div>${
+    canEdit() ? `<a onclick="openDocModal(null,'${trip.id}')">ADD &rarr;</a>` : ''}</div>`;
+  html += docs.length ? docs.map(d=>docCardHtml(d,true)).join('')
+        : `<div class="empty-state">No documents recorded for this trip.</div>`;
 
   body.innerHTML = html;
 }
 function setTripFilter(mine){ tripFilterMine = mine; renderTrip(); }
+
+function addMonths(iso, m){
+  const d = d0(iso); if(!d) return null;
+  d.setMonth(d.getMonth() + m);
+  return d.toISOString().slice(0,10);
+}
+function fmtMonthYear(iso){
+  const d = d0(iso); return d ? `${MON[d.getMonth()]} ${d.getFullYear()}` : '';
+}
+
+/* For one traveller on one trip: is their paperwork in order? */
+function travellerReadiness(travId, trip){
+  const mine = documents.filter(d=>d.traveller_id===travId);
+  const end = trip.end_date || trip.start_date;
+  const bits = [];
+  let tone = 'ok';
+  const worse = t =>{ const r={ok:0,warn:1,bad:2,idle:1}; if(r[t] > r[tone]) tone = t; };
+
+  const passport = mine.filter(d=>d.doc_type==='passport')
+    .sort((a,b)=>(b.expiry_date||'').localeCompare(a.expiry_date||''))[0];
+  if(!passport){ bits.push('No passport recorded'); worse('bad'); }
+  else if(!passport.expiry_date){ bits.push('Passport, no expiry recorded'); worse('warn'); }
+  else if(end && passport.expiry_date < end){
+    bits.push(`Passport expires ${fmtMonthYear(passport.expiry_date)}, before the return`); worse('bad');
+  } else if(end && passport.expiry_date < addMonths(end, 6)){
+    bits.push(`Passport expires ${fmtMonthYear(passport.expiry_date)}, under 6 months after`); worse('warn');
+  } else {
+    bits.push(`Passport to ${fmtMonthYear(passport.expiry_date)}`);
+  }
+
+  const visas = mine.filter(d=>d.doc_type==='visa' &&
+    (d.trip_id===trip.id || (!d.trip_id && (!d.expiry_date || !end || d.expiry_date >= end))));
+  const approved = visas.filter(v=>v.status==='approved');
+  if(approved.length){
+    bits.push(`${approved[0].title || 'Visa'} approved`);
+  } else if(visas.length){
+    const v = visas[0];
+    bits.push(`${v.title || 'Visa'} ${docStatusInfo(v).label.toLowerCase()}`);
+    worse(v.status==='rejected' ? 'bad' : 'warn');
+  } else {
+    bits.push('No visa recorded'); worse('warn');
+  }
+  return { tone, line: bits.join(' \u00b7 ') };
+}
+
+function renderReadiness(trip){
+  const el = document.getElementById('trip-ready');
+  const on = travellersOn(trip.id);
+  if(!on.length){ el.innerHTML=''; return; }
+
+  const rows = on.map(t=>({ t, r: travellerReadiness(t.id, trip) }));
+  const bad  = rows.filter(x=>x.r.tone==='bad').length;
+  const warn = rows.filter(x=>x.r.tone==='warn').length;
+
+  const banner = bad
+    ? `<div class="banner bad"><strong>${bad} ${bad===1?'traveller needs':'travellers need'} attention</strong> before this trip.</div>`
+    : warn ? `<div class="banner">${warn} ${warn===1?'traveller has':'travellers have'} paperwork still to sort out.</div>`
+    : '';
+
+  el.innerHTML = banner + `<div class="section-label"><div class="eyebrow">PAPERWORK</div></div>
+    <div class="ready">${rows.map(({t,r})=>`
+      <div class="ready-row">
+        <span class="pip ${r.tone}"></span>
+        <span class="avatar" style="width:26px;height:26px;font-size:10px;background:${t.color||'#6b7280'}">${initials(t.name)}</span>
+        <span class="rn">${escapeHtml(firstName(t.name))}<span class="sub">${escapeHtml(r.line)}</span></span>
+      </div>`).join('')}</div>`;
+}
 
 function itemRowHtml(it){
   const k = kindInfo(it.kind);
@@ -1391,51 +1727,110 @@ function itemRowHtml(it){
     <div class="ledger-mid">
       <div class="cat"><span class="ic">${k.ic}</span>${escapeHtml(it.title||k.label)}</div>
       ${bits.length?`<div class="meta">${bits.join(' &middot; ')}</div>`:''}
+      ${flightStatusUrl(it) ? `<button class="linkbtn" onclick="event.stopPropagation();openFlightStatus('${it.id}')">CHECK FLIGHT STATUS &rarr;</button>` : ''}
     </div>
     <div class="ledger-amt">${timeMain}${timeSub?`<span class="fx">${timeSub}</span>`:''}</div>
   </div>`;
 }
 
-function docCardHtml(it){
-  const st = statusInfo(it.kind, it.status);
-  const trip = trips.find(t=>t.id===it.trip_id);
-  return `<div class="doc-card" onclick="openItemModal('${it.id}')">
+function addDays(iso, k){
+  const d = d0(iso); if(!d) return null;
+  d.setDate(d.getDate() + k);
+  return d.toISOString().slice(0,10);
+}
+function docDisplayStatus(d){
+  const t = docType(d.doc_type);
+  if(t.person){
+    if(!d.expiry_date) return { label:'No expiry', tone:'idle' };
+    const left = daysUntil(d.expiry_date);
+    if(left < 0)   return { label:'Expired', tone:'bad' };
+    if(left < 183) return { label:'Expiring soon', tone:'warn' };
+    return { label:'Valid', tone:'ok' };
+  }
+  const st = docStatusInfo(d);
+  if(st.id === 'approved' && d.expiry_date && daysUntil(d.expiry_date) < 0)
+    return { label:'Expired', tone:'bad' };
+  return st;
+}
+function docScopeLabel(d){
+  if(!d.trip_id) return 'Held long term';
+  const t = trips.find(x=>x.id===d.trip_id);
+  return t ? t.title : 'One trip';
+}
+function canSeeScan(d){ return canEdit() || d.traveller_id === myTravellerId(); }
+
+function docCardHtml(d, hideTrip){
+  const t  = docType(d.doc_type);
+  const st = docDisplayStatus(d);
+  const meta = [];
+  if(!hideTrip) meta.push(escapeHtml(docScopeLabel(d)));
+  if(d.issuer)      meta.push(escapeHtml(d.issuer));
+  if(d.expiry_date) meta.push('expires ' + fmtShort(d.expiry_date) + ' ' + (d0(d.expiry_date)||new Date()).getFullYear());
+  if(d.number_last4) meta.push('\u2022\u2022\u2022\u2022 ' + escapeHtml(d.number_last4));
+  if(d.kept_at)     meta.push(escapeHtml(d.kept_at));
+
+  return `<div class="doc-card" onclick="openDocModal('${d.id}')">
     <div class="doc-top">
-      <span style="font-size:17px;">${kindInfo(it.kind).ic}</span>
-      <span class="dt-name">${escapeHtml(it.title||'Document')}</span>
+      <span style="font-size:17px;">${t.ic}</span>
+      <span class="dt-name">${escapeHtml(firstName(travName(d.traveller_id)))} \u2014 ${escapeHtml(d.title || t.label)}</span>
       <span class="stamp ${st.tone}">${st.label}</span>
     </div>
-    <div class="doc-meta">${escapeHtml(whoLabel(it))}${trip?' &middot; '+escapeHtml(trip.title||''):''}${it.start_date?' &middot; '+fmtShort(it.start_date):''}${it.reference?' &middot; '+escapeHtml(it.reference):''}</div>
-    ${it.notes?`<div class="doc-note">${escapeHtml(it.notes)}</div>`:''}
-    ${(()=>{ const fs = attachmentsFor(it.id); return fs.length ? `<div style="margin-top:9px;">${fs.map(a=>`
-      <span class="trav-pill" style="cursor:pointer;" onclick="event.stopPropagation();openAttachment('${a.id}')">\uD83D\uDCCE ${escapeHtml(a.label||'Document')}</span>`).join(' ')}</div>` : ''; })()}
+    ${meta.length ? `<div class="doc-meta">${meta.join(' &middot; ')}</div>` : ''}
+    ${d.notes ? `<div class="doc-note">${escapeHtml(d.notes)}</div>` : ''}
+    ${d.storage_path ? (canSeeScan(d)
+        ? `<div style="margin-top:9px;"><span class="trav-pill" style="cursor:pointer;"
+             onclick="event.stopPropagation();viewDocFile('${d.id}')">\uD83D\uDCCE View copy</span></div>`
+        : `<div style="margin-top:9px;font-size:11.5px;color:var(--text-faint);
+             font-family:'IBM Plex Mono',monospace;">COPY ON FILE</div>`) : ''}
   </div>`;
 }
 
 /* ============================= DOCS TAB ============================= */
+function setDocScope(scope){
+  docScope = scope;
+  document.querySelectorAll('#docs-seg button').forEach((b,k)=>
+    b.classList.toggle('on', (k===0) === (scope==='all')));
+  renderDocs();
+}
 function renderDocs(){
-  document.getElementById('docs-filter').innerHTML = `
-    <div class="chip ${docsFilterMine?'':'active'}" onclick="setDocsFilter(false)">Everyone</div>
-    <div class="chip ${docsFilterMine?'active':''}" onclick="setDocsFilter(true)">
-      <span class="dot" style="background:${currentUser.color||'#b8863f'}">${initials(currentUser.name)}</span>Just mine
-    </div>`;
-  let docs = items.filter(i=>kindInfo(i.kind).doc);
-  if(docsFilterMine) docs = docs.filter(forMe);
+  document.getElementById('docs-add').style.display = canEdit() ? 'block' : 'none';
   const body = document.getElementById('docs-body');
-  if(!docs.length){
-    body.innerHTML = `<div class="empty-state">${docsFilterMine?'None of your documents are being tracked yet.':'No documents tracked yet.'}</div>`;
+
+  let list = documents.slice();
+  if(docScope === 'mine'){
+    const mine = myTravellerId();
+    list = mine ? list.filter(d=>d.traveller_id === mine) : [];
+  }
+  if(!list.length){
+    body.innerHTML = `<div class="empty-state">${docScope==='mine'
+      ? 'None of your documents are recorded yet.'
+      : 'No documents recorded yet.'}</div>`;
     return;
   }
-  const order = {rejected:0, not_started:1, submitted:2, approved:3};
-  docs.sort((a,b)=> (order[a.status]??1)-(order[b.status]??1) || (a.start_date||'9999').localeCompare(b.start_date||'9999'));
-  const outstanding = docs.filter(d=>d.status!=='approved').length;
-  body.innerHTML = (outstanding
-    ? `<div class="empty-state" style="border-style:solid;border-color:var(--gold);background:var(--gold-soft);color:var(--text);padding:14px 16px;text-align:left;margin-bottom:12px;font-size:13px;">
-         ${outstanding} ${outstanding===1?'document':'documents'} still to sort out.
-       </div>` : '')
-    + docs.map(docCardHtml).join('');
+
+  const needsWork = list.filter(d=>{
+    const st = docDisplayStatus(d);
+    return st.tone === 'bad' || st.tone === 'warn';
+  }).length;
+
+  const byTrav = {};
+  list.forEach(d=>{ (byTrav[d.traveller_id] = byTrav[d.traveller_id] || []).push(d); });
+  const order = travellers.filter(t=>byTrav[t.id]);
+
+  const rank = { bad:0, warn:1, idle:2, ok:3 };
+  body.innerHTML =
+    (needsWork ? `<div class="banner">${needsWork} ${needsWork===1?'document needs':'documents need'} attention \u2014 expiring, expired or not yet arranged.</div>` : '') +
+    order.map(t=>{
+      const docs = byTrav[t.id].slice().sort((a,b)=>{
+        const ra = rank[docDisplayStatus(a).tone], rb = rank[docDisplayStatus(b).tone];
+        if(ra !== rb) return ra - rb;
+        return (a.trip_id?1:0) - (b.trip_id?1:0);
+      });
+      return `<div class="section-label" style="margin-top:20px;">
+          <div class="eyebrow">${escapeHtml(t.name.toUpperCase())}</div>
+        </div>` + docs.map(d=>docCardHtml(d,false)).join('');
+    }).join('');
 }
-function setDocsFilter(mine){ docsFilterMine = mine; renderDocs(); }
 
 /* ============================= SETTINGS ============================= */
 function renderSettings(){
@@ -1457,6 +1852,13 @@ function renderSettings(){
         </span>
       </div>`).join('') || `<div class="settings-item" style="cursor:default;"><span class="sub">No travellers yet</span></div>`;
   }
+  document.getElementById('set-archive-count').textContent =
+    archivedTrips().length ? archivedTrips().length + ' \u203a' : 'None \u203a';
+  const due = expiredFiles();
+  const dueCount = due.docs.length + due.atts.length;
+  document.getElementById('set-sweep').style.display = (canEdit() && dueCount) ? 'flex' : 'none';
+  document.getElementById('set-sweep-count').textContent = dueCount ? dueCount + ' \u203a' : '';
+
   const el = document.getElementById('settings-family');
   el.innerHTML = profiles.map(p=>`
     <div class="settings-item" style="cursor:default;">
@@ -1622,6 +2024,9 @@ function setKind(id){
   itemKind = id;
   document.querySelectorAll('.kind-chip').forEach(c=>c.classList.toggle('active', c.dataset.kind===id));
   const k = kindInfo(id);
+  const isFlight = id === 'flight';
+  document.getElementById('it-flight-group').style.display = isFlight ? 'block' : 'none';
+  document.getElementById('it-title-group').style.display  = isFlight ? 'none'  : 'block';
   document.getElementById('it-route-group').style.display = k.route ? 'block' : 'none';
   document.getElementById('it-place-group').style.display = (!k.route && !k.doc) ? 'block' : 'none';
   document.getElementById('it-end-group').style.display = k.doc ? 'none' : 'block';
@@ -1689,6 +2094,12 @@ function openItemModal(id, presetTripId){
   if(itemWho.length===0) itemWho = onTrip.slice();
   pendingFiles = [];
 
+  itemAirlineCode = it?.airline_code || '';
+  itemFromCode = it?.from_code || '';
+  itemToCode = it?.to_code || '';
+  const al = AIRLINES.find(a=>a[0]===itemAirlineCode);
+  document.getElementById('it-airline').value = al ? al[1] : (itemAirlineCode || '');
+  document.getElementById('it-flightno').value = it?.flight_number || '';
   document.getElementById('it-title').value = it?.title || '';
   document.getElementById('it-from').value = it?.from_place || '';
   document.getElementById('it-to').value = it?.to_place || '';
@@ -1710,9 +2121,14 @@ function openItemModal(id, presetTripId){
 async function saveItem(){
   const btn = document.getElementById('it-save');
   const tripId = document.getElementById('it-trip').value;
-  const title = document.getElementById('it-title').value.trim();
+  const isFlight = itemKind === 'flight';
+  const airlineTxt = document.getElementById('it-airline').value.trim();
+  const flightNo = document.getElementById('it-flightno').value.trim();
+  let title = document.getElementById('it-title').value.trim();
+  if(isFlight) title = [itemAirlineCode || airlineTxt, flightNo].filter(Boolean).join(' ').trim();
   if(!tripId){ showToast('Pick a trip first'); return; }
-  if(!title){ showToast('Add a name so the family knows what this is'); return; }
+  if(!title){ showToast(isFlight ? 'Add the airline or flight number'
+                                 : 'Add a name so the family knows what this is'); return; }
   const onTrip = travellersOn(tripId).map(t=>t.id);
   const everyone = onTrip.length>0 && itemWho.length===onTrip.length;
   const row = {
@@ -1727,6 +2143,10 @@ async function saveItem(){
     end_date: document.getElementById('it-enddate').value || null,
     end_time: document.getElementById('it-endtime').value || null,
     reference: document.getElementById('it-ref').value.trim() || null,
+    airline_code: isFlight ? (itemAirlineCode || null) : null,
+    flight_number: isFlight ? (flightNo || null) : null,
+    from_code: itemFromCode || codeFromText(document.getElementById('it-from').value) || null,
+    to_code: itemToCode || codeFromText(document.getElementById('it-to').value) || null,
     status: itemStatus,
     member_ids: everyone ? [] : itemWho,
     notes: document.getElementById('it-notes').value.trim() || null,
@@ -1761,6 +2181,501 @@ async function deleteItem(){
   closeModal('modal-item');
   showToast('Removed');
   if(activeTab==='trip') renderTrip(); else if(activeTab==='docs') renderDocs(); else renderHome();
+}
+
+/* ============================= DOCUMENT MODAL ============================= */
+function buildDocTypeGrid(){
+  const g = document.getElementById('doc-type-grid');
+  g.innerHTML = '';
+  DOC_TYPES.forEach(t=>{
+    const d = document.createElement('div');
+    d.className = 'kind-chip';
+    d.dataset.doc = t.id;
+    d.innerHTML = `<span class="ic">${t.ic}</span>${t.label}`;
+    d.onclick = ()=> setDocTypeSel(t.id);
+    g.appendChild(d);
+  });
+}
+function setDocTypeSel(id){
+  docType_ = id;
+  const t = docType(id);
+  document.querySelectorAll('#doc-type-grid .kind-chip')
+    .forEach(c=>c.classList.toggle('active', c.dataset.doc===id));
+
+  document.getElementById('dc-file-group').style.display   = t.file ? 'block' : 'none';
+  document.getElementById('dc-nofile-note').style.display  = t.file ? 'none' : 'block';
+  document.getElementById('doc-status-row').parentElement.style.display = t.person ? 'none' : 'block';
+  document.getElementById('dc-title-label').textContent =
+    t.person ? 'DESCRIPTION' : 'WHICH DOCUMENT';
+  document.getElementById('dc-title').placeholder =
+    id==='passport' ? 'Saudi passport' : id==='visa' ? 'Schengen multi-entry'
+    : id==='insurance' ? 'Annual travel cover' : t.label;
+
+  if(t.person) document.getElementById('dc-trip').value = '';
+  const set = docStatusSet(id);
+  if(!set.some(x=>x.id===docStatus_)) docStatus_ = set[0].id;
+  buildDocStatusRow();
+  updateDocLevelHint();
+  renderDocFileList();
+}
+function buildDocStatusRow(){
+  const row = document.getElementById('doc-status-row');
+  row.innerHTML = '';
+  docStatusSet(docType_).forEach(st=>{
+    const b = document.createElement('div');
+    b.className = 'status-btn' + (docStatus_===st.id ? ' on-'+st.tone : '');
+    b.textContent = st.label;
+    b.onclick = ()=>{ docStatus_ = st.id; buildDocStatusRow(); };
+    row.appendChild(b);
+  });
+}
+function updateDocLevelHint(){
+  const tripId = document.getElementById('dc-trip').value;
+  const t = docType(docType_);
+  const hint = document.getElementById('dc-level-hint');
+  hint.textContent = tripId
+    ? 'Belongs to this trip only. Any copy is deleted 30 days after it ends.'
+    : 'Belongs to the person, so it shows on every trip they travel on.';
+  const fh = document.getElementById('dc-file-hint');
+  if(t.file){
+    fh.textContent = tripId
+      ? 'The copy is deleted 30 days after the trip ends.'
+      : 'The copy is deleted when the document expires.';
+  }
+}
+
+function openDocModal(id, presetTripId){
+  if(!canEdit()) return;
+  editingDocId = id;
+  pendingDocFile = null;
+  const d = id ? documents.find(x=>x.id===id) : null;
+  document.getElementById('doc-modal-title').textContent = d ? 'Edit document' : 'Add a document';
+
+  const tsel = document.getElementById('dc-traveller');
+  tsel.innerHTML = travellers.map(t=>
+    `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  tsel.value = d ? d.traveller_id : (travellers[0]?.id || '');
+
+  const trsel = document.getElementById('dc-trip');
+  trsel.innerHTML = `<option value="">The person (all trips)</option>` +
+    upcomingTrips().concat(pastTrips()).map(t=>
+      `<option value="${t.id}">${escapeHtml(t.title||'Untitled')}</option>`).join('');
+  trsel.value = d ? (d.trip_id || '') : (presetTripId || '');
+  trsel.onchange = updateDocLevelHint;
+
+  tsel.onchange = ()=>{
+    if(editingDocId) return;
+    const t = travFor(tsel.value);
+    // staff and guests normally carry documents for one trip only
+    if(t && t.kind !== 'family' && !trsel.value && activeTripId) trsel.value = activeTripId;
+    updateDocLevelHint();
+  };
+
+  document.getElementById('dc-title').value  = d?.title || '';
+  document.getElementById('dc-issuer').value = d?.issuer || '';
+  document.getElementById('dc-issue').value  = d?.issue_date || '';
+  document.getElementById('dc-expiry').value = d?.expiry_date || '';
+  document.getElementById('dc-last4').value  = d?.number_last4 || '';
+  document.getElementById('dc-kept').value   = d?.kept_at || '';
+  document.getElementById('dc-notes').value  = d?.notes || '';
+  document.getElementById('dc-delete').style.display = d ? 'block' : 'none';
+
+  docType_   = d?.doc_type || 'visa';
+  docStatus_ = d?.status || 'not_started';
+  setDocTypeSel(docType_);
+  document.getElementById('modal-doc').classList.add('active');
+}
+
+function renderDocFileList(){
+  const wrap = document.getElementById('dc-file-list');
+  const d = editingDocId ? documents.find(x=>x.id===editingDocId) : null;
+  let html = '';
+  if(d && d.storage_path){
+    html += `<div class="attach-row">
+      <span>\uD83D\uDCCE</span>
+      <span class="an" onclick="viewDocFile('${d.id}')">${escapeHtml(fileLabel(d.storage_path))}</span>
+      <span class="ax" onclick="removeDocFile()">&times;</span>
+    </div>`;
+  }
+  if(pendingDocFile){
+    html += `<div class="attach-row pending">
+      <span>\u21E1</span>
+      <span class="an">${escapeHtml(pendingDocFile.name)}</span>
+      <span style="color:#9c6a1f;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
+      <span class="ax" onclick="pendingDocFile=null;renderDocFileList();">&times;</span>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+function fileLabel(path){ return String(path||'').split('/').pop().replace(/^[^-]+-/, ''); }
+
+function docFileExpiry(tripId, expiry){
+  if(tripId){
+    const t = trips.find(x=>x.id===tripId);
+    return t && t.end_date ? addDays(t.end_date, 30) : null;
+  }
+  return expiry || null;
+}
+
+async function saveDoc(){
+  const btn = document.getElementById('dc-save');
+  const travellerId = document.getElementById('dc-traveller').value;
+  const tripId = document.getElementById('dc-trip').value || null;
+  const t = docType(docType_);
+  if(!travellerId){ showToast('Pick whose document this is'); return; }
+
+  const row = {
+    traveller_id: travellerId,
+    trip_id: t.person ? null : tripId,
+    doc_type: docType_,
+    title: document.getElementById('dc-title').value.trim() || t.label,
+    issuer: document.getElementById('dc-issuer').value.trim() || null,
+    issue_date: document.getElementById('dc-issue').value || null,
+    expiry_date: document.getElementById('dc-expiry').value || null,
+    number_last4: (document.getElementById('dc-last4').value.trim() || null),
+    kept_at: document.getElementById('dc-kept').value.trim() || null,
+    notes: document.getElementById('dc-notes').value.trim() || null,
+    status: t.person ? 'approved' : docStatus_,
+  };
+
+  btn.disabled = true; btn.textContent = 'Saving...';
+  let error, savedId = editingDocId;
+  if(editingDocId){
+    ({ error } = await sb.from('documents').update(row).eq('id', editingDocId));
+  } else {
+    row.created_by = currentUser.id;
+    const res = await sb.from('documents').insert(row).select().single();
+    error = res.error; savedId = res.data?.id;
+  }
+  if(error){
+    btn.disabled=false; btn.textContent='Save';
+    console.error(error);
+    showToast((error.message||'').includes('documents_no_passport_scan')
+      ? 'Passports cannot carry a copy' : 'Could not save');
+    return;
+  }
+
+  if(pendingDocFile && t.file && savedId){
+    btn.textContent = 'Uploading...';
+    const path = `docs/${savedId}/${newId()}-${safeName(pendingDocFile.name)}`;
+    const { error: upErr } = await sb.storage.from('visas').upload(path, pendingDocFile, { upsert:false });
+    if(upErr){ console.error(upErr); showToast('Saved, but the copy would not upload'); }
+    else {
+      await sb.from('documents').update({
+        storage_path: path,
+        file_expires_on: docFileExpiry(row.trip_id, row.expiry_date)
+      }).eq('id', savedId);
+    }
+  }
+  pendingDocFile = null;
+  btn.disabled = false; btn.textContent = 'Save';
+  await loadDocuments();
+  closeModal('modal-doc');
+  showToast(editingDocId ? 'Document updated' : 'Document added');
+  refreshCurrentScreen();
+}
+
+async function removeDocFile(){
+  const d = documents.find(x=>x.id===editingDocId);
+  if(!d || !d.storage_path) return;
+  if(!confirm('Remove the stored copy? The details stay.')) return;
+  await sb.storage.from('visas').remove([d.storage_path]);
+  const { error } = await sb.from('documents')
+    .update({ storage_path:null, file_expires_on:null }).eq('id', d.id);
+  if(error){ console.error(error); showToast('Could not remove the copy'); return; }
+  await loadDocuments();
+  renderDocFileList();
+  showToast('Copy removed');
+}
+
+async function deleteDoc(){
+  if(!editingDocId) return;
+  const d = documents.find(x=>x.id===editingDocId);
+  if(!confirm('Remove this document entirely?')) return;
+  if(d && d.storage_path) await sb.storage.from('visas').remove([d.storage_path]);
+  const { error } = await sb.from('documents').delete().eq('id', editingDocId);
+  if(error){ console.error(error); showToast('Could not remove it'); return; }
+  await loadDocuments();
+  closeModal('modal-doc');
+  showToast('Document removed');
+  refreshCurrentScreen();
+}
+
+function refreshCurrentScreen(){
+  if(activeTab==='trip') renderTrip();
+  else if(activeTab==='docs') renderDocs();
+  else if(activeTab==='settings') renderSettings();
+  else renderHome();
+}
+
+/* ============================= FILE VIEWER ============================= */
+let currentFileUrl = null, currentFileName = '';
+
+async function signedUrlFor(path){
+  const { data, error } = await sb.storage.from('visas').createSignedUrl(path, 300);
+  if(error || !data){ console.error(error); return null; }
+  return data.signedUrl;
+}
+async function viewDocFile(docId){
+  const d = documents.find(x=>x.id===docId);
+  if(!d || !d.storage_path) return;
+  if(!canSeeScan(d)){ showToast('Only the holder, the head and the secretary can open this'); return; }
+  openViewer(await signedUrlFor(d.storage_path), fileLabel(d.storage_path));
+}
+async function viewAttachment(attId){
+  const a = attachments.find(x=>x.id===attId);
+  if(!a) return;
+  openViewer(await signedUrlFor(a.storage_path), a.label || 'Document');
+}
+function openViewer(url, name){
+  if(!url){ showToast('Could not open that file'); return; }
+  currentFileUrl = url; currentFileName = name || 'document';
+  document.getElementById('viewer-title').textContent = currentFileName;
+  const body = document.getElementById('viewer-body');
+  const isPdf = /\.pdf(\?|$)/i.test(name) || /\.pdf/i.test(url.split('?')[0]);
+  const isImg = /\.(jpe?g|png|gif|webp|heic)(\?|$)/i.test(name);
+  if(isImg)      body.innerHTML = `<img src="${url}" alt="">`;
+  else if(isPdf) body.innerHTML = `<iframe src="${url}#view=FitH" title="Document"></iframe>`;
+  else           body.innerHTML = `<div class="viewer-note">This file type cannot be previewed.<br>Use Download to open it.</div>`;
+  document.getElementById('viewer').classList.add('on');
+}
+function closeViewer(){
+  document.getElementById('viewer').classList.remove('on');
+  document.getElementById('viewer-body').innerHTML = '';
+  currentFileUrl = null;
+}
+function downloadCurrentFile(){
+  if(!currentFileUrl) return;
+  const a = document.createElement('a');
+  a.href = currentFileUrl; a.download = currentFileName;
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ============================= EXPIRED COPIES ============================= */
+function expiredFiles(){
+  const today = todayISO();
+  return {
+    docs: documents.filter(d=>d.storage_path && d.file_expires_on && d.file_expires_on < today),
+    atts: attachments.filter(a=>a.file_expires_on && a.file_expires_on < today),
+  };
+}
+async function sweepExpiredFiles(interactive){
+  const { docs, atts } = expiredFiles();
+  const total = docs.length + atts.length;
+  if(!total){ if(interactive) showToast('Nothing to clear'); return 0; }
+  if(interactive && !confirm(
+      `${total} stored ${total===1?'copy has':'copies have'} passed their keep-until date. ` +
+      `Delete the ${total===1?'file':'files'}? All the details stay.`)) return 0;
+
+  for(const d of docs){
+    await sb.storage.from('visas').remove([d.storage_path]);
+    await sb.from('documents').update({ storage_path:null, file_expires_on:null }).eq('id', d.id);
+  }
+  for(const a of atts){
+    await sb.storage.from('visas').remove([a.storage_path]);
+    await sb.from('attachments').delete().eq('id', a.id);
+  }
+  await loadDocuments(); await loadAttachments();
+  if(interactive){ showToast(`${total} expired ${total===1?'copy':'copies'} deleted`); refreshCurrentScreen(); }
+  return total;
+}
+
+/* ============================= ARCHIVE ============================= */
+function openArchive(){
+  const list = archivedTrips();
+  document.getElementById('archive-list').innerHTML = list.length
+    ? list.map(t=>`<div class="trip-card" onclick="closeModal('modal-archive');openTrip('${t.id}')">
+        <div class="tc-top">
+          <div style="flex:1;min-width:0;">
+            <div class="tc-name">${escapeHtml(t.title||'Untitled')}</div>
+            <div class="tc-route">${escapeHtml([t.origin,t.destination].filter(Boolean).join(' \u2192 '))}</div>
+          </div>
+          <div class="tc-when">${fmtRange(t.start_date,t.end_date)}</div>
+        </div>
+        ${canEdit() ? `<button class="linkbtn" onclick="event.stopPropagation();unarchiveTrip('${t.id}')">BRING BACK &rarr;</button>` : ''}
+      </div>`).join('')
+    : `<div class="empty-state">Nothing archived yet. Trips move here a year after they end.</div>`;
+  document.getElementById('modal-archive').classList.add('active');
+}
+async function unarchiveTrip(id){
+  const { error } = await sb.from('trips').update({ archived:false }).eq('id', id);
+  if(error){ console.error(error); showToast('Could not restore it'); return; }
+  await loadTrips();
+  openArchive(); renderHome();
+  showToast('Moved back to Past trips');
+}
+
+/* ============================= CALENDAR EXPORT ============================= */
+function icsEscape(t){ return String(t||'').replace(/([,;\\])/g,'\\$1').replace(/\r?\n/g,'\\n'); }
+function icsStamp(date, time){
+  const d = String(date).replace(/-/g,'');
+  return time ? d + 'T' + String(time).slice(0,5).replace(':','') + '00' : d;
+}
+function exportTripIcs(tripId){
+  const trip = trips.find(t=>t.id===tripId);
+  if(!trip) return;
+  const list = tripItems(tripId).filter(i=>i.start_date && i.status!=='cancelled').sort(itemSort);
+  if(!list.length){ showToast('Nothing with a date to export yet'); return; }
+
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Al-Hugail Travels//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  list.forEach(i=>{
+    const k = kindInfo(i.kind);
+    const where = k.route ? [i.from_place,i.to_place].filter(Boolean).join(' \u2192 ') : (i.place||'');
+    const timed = !!i.start_time;
+    const endDate = i.end_date || i.start_date;
+    const endTime = i.end_time || i.start_time;
+
+    L.push('BEGIN:VEVENT');
+    L.push('UID:' + i.id + '@alhugail-travels');
+    L.push('DTSTAMP:' + new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z');
+    if(timed){
+      L.push('DTSTART:' + icsStamp(i.start_date, i.start_time));
+      L.push('DTEND:'   + icsStamp(endDate, endTime));
+    } else {
+      L.push('DTSTART;VALUE=DATE:' + icsStamp(i.start_date));
+      L.push('DTEND;VALUE=DATE:'   + icsStamp(addDays(endDate,1) || i.start_date));
+    }
+    L.push('SUMMARY:' + icsEscape(`${k.label}: ${i.title||k.label}`));
+    if(where) L.push('LOCATION:' + icsEscape(where));
+    const desc = [trip.title, i.reference ? 'Ref ' + i.reference : '', i.notes||''].filter(Boolean).join('\n');
+    if(desc) L.push('DESCRIPTION:' + icsEscape(desc));
+    if(timed){
+      L.push('BEGIN:VALARM','TRIGGER:-P1D','ACTION:DISPLAY',
+             'DESCRIPTION:' + icsEscape('Tomorrow: ' + (i.title||k.label)),'END:VALARM');
+      L.push('BEGIN:VALARM','TRIGGER:-PT3H','ACTION:DISPLAY',
+             'DESCRIPTION:' + icsEscape('In 3 hours: ' + (i.title||k.label)),'END:VALARM');
+    }
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+
+  const blob = new Blob([L.join('\r\n')], { type:'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = safeName((trip.title||'trip') + '.ics');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  showToast('Calendar file saved \u2014 open it to add the reminders');
+}
+
+/* ============================= FLIGHT STATUS ============================= */
+function flightStatusUrl(i){
+  const code = (i.airline_code||'').trim();
+  const num  = (i.flight_number||'').trim();
+  if(!code || !num) return null;
+  const when = i.start_date ? ' ' + i.start_date : '';
+  return 'https://www.google.com/search?q=' + encodeURIComponent(`${code}${num} flight status${when}`);
+}
+function openFlightStatus(id){
+  const i = items.find(x=>x.id===id);
+  const url = i && flightStatusUrl(i);
+  if(url) window.open(url, '_blank', 'noopener');
+}
+
+/* ============================= AUTOCOMPLETE ============================= */
+function lookupRows(kind){
+  const custom = lookups.filter(l=>l.kind===kind)
+    .map(l=>({ code:l.code||'', label:l.label, sub:'added by the family', country:l.country||'', rank:0 }));
+  if(kind==='airline') return AIRLINES.map(a=>({ code:a[0], label:a[1], sub:'', rank:1 })).concat(custom);
+  if(kind==='airport') return AIRPORTS.map(a=>({ code:a[0], label:a[1], sub:a[3], country:a[2], rank:a[4] })).concat(custom);
+  return CITIES.map(c=>({ code:'', label:c[0], country:c[1], sub:'', rank:c[2] })).concat(custom);
+}
+function acSearch(kind, q){
+  q = q.trim().toLowerCase();
+  if(q.length < 1) return [];
+  const out = [];
+  for(const r of lookupRows(kind)){
+    const code = (r.code||'').toLowerCase();
+    const label = (r.label||'').toLowerCase();
+    const sub = (r.sub||'').toLowerCase();
+    let sc = -1;
+    if(code && code === q) sc = 0;
+    else if(label.startsWith(q)) sc = 1;
+    else if(code && code.startsWith(q)) sc = 2;
+    else if(label.includes(q)) sc = 4;
+    else if(sub.includes(q)) sc = 6;
+    if(sc >= 0) out.push([sc + (r.rank||0) * 0.35, r]);
+  }
+  out.sort((a,b)=> a[0]-b[0] || a[1].label.localeCompare(b[1].label));
+  return out.slice(0, 8).map(x=>x[1]);
+}
+function acLabel(kind, r){
+  return kind==='airport' && r.code ? `${r.label} (${r.code})` : r.label;
+}
+
+/* Attaches a suggestion list to an input. Typing something that is not on
+   the list is always allowed; it gets saved so everyone sees it next time. */
+function attachAutocomplete(input, kindFn, onPick){
+  const wrap = input.parentElement;
+  let list = null, rows = [], sel = -1;
+
+  function close(){ if(list){ list.remove(); list = null; } sel = -1; }
+  function choose(r){
+    const kind = kindFn();
+    input.value = acLabel(kind, r);
+    close();
+    if(onPick) onPick(r);
+  }
+  async function chooseFreeText(){
+    const kind = kindFn();
+    const label = input.value.trim();
+    close();
+    if(label.length < 2) return;
+    if(!lookupRows(kind).some(r=>r.label.toLowerCase() === label.toLowerCase())){
+      const { data, error } = await sb.from('lookup_entries')
+        .insert({ kind, label, created_by: currentUser?.id }).select().single();
+      if(!error && data){ lookups.push(data); showToast(`"${label}" saved for everyone`); }
+    }
+    if(onPick) onPick({ code:'', label });
+  }
+  function render(){
+    const kind = kindFn();
+    rows = acSearch(kind, input.value);
+    close();
+    const typed = input.value.trim();
+    const exact = rows.some(r=>r.label.toLowerCase() === typed.toLowerCase());
+    if(!rows.length && typed.length < 2) return;
+    list = document.createElement('div');
+    list.className = 'ac-list';
+    rows.forEach((r,idx)=>{
+      const el = document.createElement('div');
+      el.className = 'ac-item' + (idx===sel ? ' sel' : '');
+      el.innerHTML = `${r.code ? `<span class="code">${escapeHtml(r.code)}</span>` : ''}
+        <span>${escapeHtml(r.label)}</span>
+        ${r.sub ? `<span class="sub">${escapeHtml(r.sub)}</span>`
+                : r.country ? `<span class="sub">${escapeHtml(r.country)}</span>` : ''}`;
+      el.onmousedown = e=>{ e.preventDefault(); choose(r); };
+      list.appendChild(el);
+    });
+    if(typed.length >= 2 && !exact){
+      const el = document.createElement('div');
+      el.className = 'ac-item new';
+      el.textContent = `Use "${typed}"`;
+      el.onmousedown = e=>{ e.preventDefault(); chooseFreeText(); };
+      list.appendChild(el);
+    }
+    if(list.children.length) wrap.appendChild(list); else close();
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('focus', ()=>{ if(input.value) render(); });
+  input.addEventListener('blur', ()=> setTimeout(close, 120));
+  input.addEventListener('keydown', e=>{
+    if(!list) return;
+    const max = list.children.length - 1;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); sel = Math.min(sel+1, max); render2(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); sel = Math.max(sel-1, 0); render2(); }
+    else if(e.key === 'Enter'){
+      e.preventDefault();
+      if(sel >= 0 && sel < rows.length) choose(rows[sel]); else chooseFreeText();
+    } else if(e.key === 'Escape'){ close(); }
+  });
+  function render2(){
+    if(!list) return;
+    Array.from(list.children).forEach((c,i)=>c.classList.toggle('sel', i===sel));
+  }
 }
 
 /* ============================= ATTACHMENTS ============================= */
@@ -1803,9 +2718,11 @@ async function uploadPending(tripId, itemId){
     const path = `${tripId}/${itemId}/${newId()}-${safeName(f.name)}`;
     const { error: upErr } = await sb.storage.from('visas').upload(path, f, { upsert:false });
     if(upErr){ console.error(upErr); failed++; continue; }
+    const trip = trips.find(t=>t.id===tripId);
     const { error: rowErr } = await sb.from('attachments').insert({
       trip_id: tripId, item_id: itemId, label: f.name, storage_path: path,
-      mime: f.type || null, size_bytes: f.size, uploaded_by: currentUser.id
+      mime: f.type || null, size_bytes: f.size, uploaded_by: currentUser.id,
+      file_expires_on: trip && trip.end_date ? addDays(trip.end_date, 30) : null
     });
     if(rowErr){ console.error(rowErr); failed++; }
   }
@@ -1813,13 +2730,7 @@ async function uploadPending(tripId, itemId){
   return failed;
 }
 
-async function openAttachment(id){
-  const a = attachments.find(x=>x.id===id);
-  if(!a) return;
-  const { data, error } = await sb.storage.from('visas').createSignedUrl(a.storage_path, 300);
-  if(error || !data){ console.error(error); showToast('Could not open that file'); return; }
-  window.open(data.signedUrl, '_blank', 'noopener');
-}
+async function openAttachment(id){ await viewAttachment(id); }
 async function removeAttachment(id){
   const a = attachments.find(x=>x.id===id);
   if(!a) return;
@@ -1859,6 +2770,28 @@ async function paintHero(trip){
     <img src="${escapeHtml(url)}" alt="" onerror="this.closest('.hero').remove()">
     <div class="cap">${escapeHtml(trip.destination || trip.title || '')}</div>
   </div>`;
+}
+
+function codeFromText(v){
+  const m = /\(([A-Za-z0-9]{3})\)\s*$/.exec(String(v||''));
+  return m ? m[1].toUpperCase() : '';
+}
+function wirePickers(){
+  const placeKind = ()=> itemKind === 'flight' ? 'airport' : 'city';
+  attachAutocomplete(document.getElementById('it-from'), placeKind, r=>{ itemFromCode = r.code || ''; });
+  attachAutocomplete(document.getElementById('it-to'),   placeKind, r=>{ itemToCode   = r.code || ''; });
+  attachAutocomplete(document.getElementById('it-place'), ()=>'city', ()=>{});
+  attachAutocomplete(document.getElementById('it-airline'), ()=>'airline', r=>{ itemAirlineCode = r.code || ''; });
+  attachAutocomplete(document.getElementById('tp-origin'), ()=>'city', ()=>{});
+  attachAutocomplete(document.getElementById('tp-dest'),   ()=>'city', ()=>{});
+  document.getElementById('dc-file').addEventListener('change', e=>{
+    const f = (e.target.files||[])[0];
+    e.target.value = '';
+    if(!f) return;
+    if(f.size > 15*1024*1024){ showToast('Files must be under 15 MB'); return; }
+    pendingDocFile = f;
+    renderDocFileList();
+  });
 }
 
 /* ============================= UTIL ============================= */
