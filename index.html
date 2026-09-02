@@ -113,7 +113,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .pin-dot.filled{background:var(--gold);border-color:var(--gold);}
   .pin-dots.shake{animation:shake .35s;}
   @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
-  .pin-error{text-align:center;color:var(--coral);font-size:12.5px;height:16px;margin-bottom:6px;font-family:'IBM Plex Mono',monospace;}
+  .pin-error{text-align:center;color:var(--coral);font-size:12.5px;min-height:16px;margin:0 auto 6px;
+    max-width:320px;line-height:1.5;font-family:'IBM Plex Mono',monospace;word-break:break-word;}
   .pin-hint{text-align:center;color:var(--text-muted);font-size:12.5px;margin-bottom:20px;line-height:1.5;}
   .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:280px;margin:auto auto 12px;width:100%;}
   .key{
@@ -1029,7 +1030,17 @@ async function handlePinComplete(){
     const { error: profErr } = await sb.from('profiles').upsert({
       id: data.user.id, username: f.username, display_name: f.name, role: f.role, color: f.color, email: pendingSignupEmail
     });
-    if(profErr){ console.error(profErr); errEl.textContent='Account created, but profile setup failed.'; return; }
+    if(profErr){
+      console.error('profile upsert failed:', profErr);
+      const m = (profErr.message||'').toLowerCase();
+      errEl.textContent =
+        m.includes('duplicate') || m.includes('unique')
+          ? 'A profile for this name already exists. Clear it in Supabase, then try again.'
+        : m.includes('row-level') || m.includes('policy')
+          ? 'Blocked by a database policy — the profiles table needs its insert policy.'
+        : 'Profile setup failed: ' + (profErr.message || 'unknown error');
+      return;
+    }
     await enterAppFromSession(data.user);
   } else if(pinMode==='change-step1'){
     tempNewPin = pinBuffer; pinBuffer=''; renderDots('pin-dots','');
