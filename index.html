@@ -354,7 +354,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="auth-choice">
       <button class="auth-choice-btn primary" onclick="startPinFlow('login')">
         <span class="ic">&#128273;</span>
-        <span class="lbl">Enter my PIN<span class="sub">I've used the family apps before</span></span>
+        <span class="lbl">Enter my PIN<span class="sub">I've already set one up here</span></span>
       </button>
       <button class="auth-choice-btn" onclick="startPinFlow('create')">
         <span class="ic">&#10024;</span>
@@ -587,9 +587,14 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
 <script>
 /* ============================= CONFIG ============================= */
-const SUPABASE_URL = 'https://vinjzkddtqfqnhqyitlg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpbmp6a2RkdHFmcW5ocXlpdGxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDI5NTksImV4cCI6MjEwMzY3ODk1OX0.Rx9_nEdYtp7eSBrhC5OUj43-dEUitmwN4sdhJ2EPXv4';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* This app runs on its OWN Supabase project. It shares nothing with the
+   family ledger — separate accounts, separate PINs, separate data.
+   Paste the two values from Supabase -> Project Settings -> API below. */
+const SUPABASE_URL = 'PASTE_YOUR_PROJECT_URL_HERE';
+const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+
+const CONFIGURED = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 60;
+const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL.replace(/\/$/,''), SUPABASE_ANON_KEY) : null;
 
 const FAMILY = [
   {username:'hesham', name:'Hesham Alhugail', role:'head', color:'#b8863f'},
@@ -642,7 +647,7 @@ let itemWho = [];
 let pendingSignupEmail = null;
 let usernameEmailMap = {};
 
-function authPassword(username, pin){ return `${username}-${pin}-ledger9secure`; }
+function authPassword(username, pin){ return `${username}-${pin}-travel7secure`; }
 function familyOf(username){ return FAMILY.find(f=>f.username===username); }
 function initials(name){ return (name||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -684,9 +689,11 @@ function whoLabel(it){
 /* ============================= RECOVERY ============================= */
 let recoveryUsername = null, recoveryPinBuffer = '', recoveryMode = 'step1', recoveryTempPin = '';
 
-sb.auth.onAuthStateChange((event, session) => {
-  if(event === 'PASSWORD_RECOVERY' && session){ showRecoveryScreen(session.user); }
-});
+if(CONFIGURED){
+  sb.auth.onAuthStateChange((event, session) => {
+    if(event === 'PASSWORD_RECOVERY' && session){ showRecoveryScreen(session.user); }
+  });
+}
 
 async function showRecoveryScreen(authUser){
   ['boot-loading','login-screen','auth-choice-screen','pin-screen','main-app','navbar'].forEach(id=>{
@@ -735,6 +742,12 @@ async function handleRecoveryComplete(){
 async function init(){
   buildPad('keypad', pinInput);
   buildKindGrid();
+  if(!CONFIGURED){
+    document.querySelector('.boot-spinner').style.display = 'none';
+    document.getElementById('boot-loading-text').innerHTML =
+      'Not connected yet.<br><br><span style="text-transform:none;letter-spacing:0;font-family:Inter,sans-serif;font-size:13px;color:var(--text-muted);line-height:1.6;">Open index.html, find SUPABASE_URL near the top of the script, and paste in your project URL and anon key.</span>';
+    return;
+  }
   try{
     const { data: { session } } = await sb.auth.getSession();
     if(session){ await enterAppFromSession(session.user); } else { showLoginScreen(); }
@@ -865,7 +878,7 @@ function updatePinUI(){
   const eyebrow = document.getElementById('pin-eyebrow');
   const hint = document.getElementById('pin-hint');
   if(pinMode==='login'){ eyebrow.textContent='ENTER PIN'; hint.textContent=''; }
-  else if(pinMode==='create-step1'){ eyebrow.textContent='CREATE PIN'; hint.textContent='Choose a 4-digit PIN. If you already use the family ledger, use the same one.'; }
+  else if(pinMode==='create-step1'){ eyebrow.textContent='CREATE PIN'; hint.textContent='Choose a 4-digit PIN for this app. It is separate from the family ledger.'; }
   else if(pinMode==='create-step2'){ eyebrow.textContent='CONFIRM'; hint.textContent='Enter the same PIN again to confirm.'; }
   else if(pinMode==='change-step1'){ eyebrow.textContent='NEW PIN'; hint.textContent='Choose a new 4-digit PIN.'; }
   else if(pinMode==='change-step2'){ eyebrow.textContent='CONFIRM'; hint.textContent='Enter the same new PIN again to confirm.'; }
