@@ -342,6 +342,28 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* add controls that look pressable */
+  .addbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gold);
+    background:var(--gold-soft);color:#8a6320;border-radius:20px;padding:6px 13px;
+    font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:0;
+    text-transform:none;cursor:pointer;}
+  .addbtn:active{background:var(--surface-2);}
+  .addbtn .pl{font-size:15px;line-height:1;margin-top:-1px;}
+
+  /* schedule row labels */
+  .ledger-amt .lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-faint);
+    letter-spacing:0.1em;margin-right:5px;text-transform:uppercase;}
+  .ledger-amt .fx.strong{color:var(--text);font-weight:500;font-size:13px;}
+  .ledger-amt .nights{display:block;font-family:'Inter',sans-serif;font-size:10.5px;
+    color:var(--text-faint);margin-top:3px;font-weight:400;}
+  .ledger-mid .carrier{color:var(--text-muted);font-weight:400;}
+  .who-dots{display:inline-flex;gap:3px;vertical-align:middle;margin-left:2px;}
+  .who-dots span{width:15px;height:15px;border-radius:50%;display:inline-flex;
+    align-items:center;justify-content:center;font-size:7.5px;font-weight:700;
+    font-family:'IBM Plex Mono',monospace;color:#fff;}
+  .info-note{font-size:12.5px;line-height:1.55;color:var(--text-muted);background:var(--surface-2);
+    border-radius:12px;padding:11px 13px;margin-bottom:12px;}
+
   /* collapsible sections */
   .sechead{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;
     padding:16px 2px 9px;text-align:left;cursor:pointer;}
@@ -581,7 +603,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       </div>
       <div class="section-label">
         <div class="eyebrow" id="trips-heading">TRIPS</div>
-        <a id="home-add-trip" style="display:none;" onclick="openTripModal(null)">NEW TRIP &rarr;</a>
+        <button class="addbtn" id="home-add-trip" style="display:none;" onclick="openTripModal(null)">
+          <span class="pl">+</span> New trip</button>
       </div>
       <div id="trips-list"></div>
     </div>
@@ -605,7 +628,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="screen" id="screen-docs">
       <div class="section-label" style="margin-top:4px;">
         <div class="eyebrow">VISAS &amp; DOCUMENTS</div>
-        <a id="docs-add" style="display:none;" onclick="openDocModal(null)">ADD &rarr;</a>
+        <button class="addbtn" id="docs-add" style="display:none;" onclick="openDocModal(null)">
+          <span class="pl">+</span> Add document</button>
       </div>
       <div class="segbar" id="docs-seg">
         <button class="on" onclick="setDocScope('all')">Everyone</button>
@@ -641,6 +665,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         </div>
         <button class="status-btn" style="width:100%;margin-top:8px;" onclick="addTravellerFromSettings()">Add traveller</button>
       </div>
+      <div class="section-label" id="lookup-label" style="display:none;">
+        <div class="eyebrow">PLACES &amp; AIRLINES YOU ADDED</div>
+      </div>
+      <div class="settings-list" id="settings-lookups" style="display:none;"></div>
       <div class="section-label"><div class="eyebrow">HOUSEKEEPING</div></div>
       <div class="settings-list">
         <div class="settings-item" onclick="openArchive()">
@@ -683,8 +711,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     <div class="form-group">
       <label class="form-label">FROM &amp; TO</label>
       <div class="two-col">
-        <input type="text" id="tp-origin" placeholder="Riyadh">
-        <input type="text" id="tp-dest" placeholder="Japan">
+        <div class="ac-wrap" style="flex:1;"><input type="text" id="tp-origin" placeholder="Riyadh" autocomplete="off"></div>
+        <div class="ac-wrap" style="flex:1;"><input type="text" id="tp-dest" placeholder="Japan" autocomplete="off"></div>
       </div>
     </div>
     <div class="form-group">
@@ -742,9 +770,14 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <div class="kind-grid" id="kind-grid"></div>
     </div>
     <div class="form-group" id="it-flight-group">
-      <label class="form-label">AIRLINE &amp; FLIGHT NUMBER</label>
+      <label class="form-label" id="it-carrier-label">AIRLINE &amp; FLIGHT NUMBER</label>
       <div class="two-col">
-        <div class="ac-wrap"><input type="text" id="it-airline" placeholder="Saudia" autocomplete="off"></div>
+        <div class="ac-wrap" style="flex:1;" id="it-airline-wrap">
+          <input type="text" id="it-airline" placeholder="Saudia" autocomplete="off">
+        </div>
+        <div style="flex:1;display:none;" id="it-operator-wrap">
+          <input type="text" id="it-operator" placeholder="SNCF">
+        </div>
         <input type="text" id="it-flightno" placeholder="801" style="flex:0 0 96px;">
       </div>
     </div>
@@ -787,7 +820,12 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
           <input type="date" id="it-retdate">
           <input type="time" id="it-rettime">
         </div>
-        <input type="text" id="it-retno" placeholder="Return flight number">
+        <div class="two-col">
+          <div class="ac-wrap" style="flex:1;">
+            <input type="text" id="it-retairline" placeholder="Return airline" autocomplete="off">
+          </div>
+          <input type="text" id="it-retno" placeholder="Number" style="flex:0 0 96px;">
+        </div>
         <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;"
            id="it-return-hint"></p>
       </div>
@@ -841,7 +879,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     </div>
     <div class="form-group">
       <label class="form-label" id="dc-title-label">DESCRIPTION</label>
-      <input type="text" id="dc-title" placeholder="Schengen multi-entry">
+      <div class="ac-wrap"><input type="text" id="dc-title" placeholder="Schengen multi-entry" autocomplete="off"></div>
     </div>
     <div class="form-group">
       <label class="form-label">ISSUED BY</label>
@@ -1035,7 +1073,7 @@ function docWhoLabel(d){
   if(ids.length > 2) return ids.length + ' travellers';
   return ids.map(id=>firstName(travName(id))).join(' & ');
 }
-let itemAirlineCode = '', itemFromCode = '', itemToCode = '';
+let itemAirlineCode = '', itemFromCode = '', itemToCode = '', itemRetAirlineCode = '';
 let tripVisaPolicy = 'unknown';
 let tripVisaOverrides = {};   // travellerId -> true/false, overriding the trip
 let nuIndex = 0;
@@ -1122,11 +1160,12 @@ function legsOf(i){
       start_date: i.return_date,
       start_time: i.return_time || null,
       end_date: null, end_time: null,
-      flight_number: i.return_flight_number || i.flight_number,
+      flight_number: i.return_flight_number || null,
+      airline_code: i.return_airline_code || i.airline_code,
       from_place: i.to_place, to_place: i.from_place,
       from_code: i.to_code, to_code: i.from_code,
-      title: [i.airline_code || '', i.return_flight_number || ''].filter(Boolean).join(' ')
-             || (i.title || '') });
+      title: [i.return_airline_code || i.airline_code || '', i.return_flight_number || '']
+               .filter(Boolean).join(' ') || (i.title || '') });
   }
   return out;
 }
@@ -1983,33 +2022,97 @@ function travellerReadiness(travId, trip){
   return { tone, line: bits.join(' \u00b7 ') };
 }
 
+function tint(hex, a){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex||''));
+  if(!m) return 'transparent';
+  const v = parseInt(m[1], 16);
+  return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${a})`;
+}
+function airlineName(code){
+  if(!code) return '';
+  const a = AIRLINES.find(x=>x[0]===code);
+  if(a) return a[1];
+  const l = lookups.find(x=>x.kind==='airline' && x.code===code);
+  return l ? l.label : code;
+}
+/* The carrier, spelled out. "Saudia SV 505" rather than a bare code. */
+function carrierOf(it){
+  if(it.kind === 'train' || it.kind === 'car') return it.operator || '';
+  const code = it._leg === 'ret' ? (it.return_airline_code || it.airline_code) : it.airline_code;
+  return airlineName(code);
+}
+function whoDots(it){
+  const ids = (it.member_ids && it.member_ids.length)
+    ? it.member_ids
+    : travellersOn(it.trip_id).map(t=>t.id);
+  if(!ids.length) return '';
+  if(ids.length <= 2)
+    return ids.map(id=>escapeHtml(firstName(travName(id)))).join(' & ');
+  return `<span class="who-dots">${ids.map(id=>
+    `<span style="background:${travColor(id)}" title="${escapeHtml(travName(id))}">${initials(travName(id))}</span>`
+  ).join('')}</span>`;
+}
+function nightsBetween(a,b){
+  const x = d0(a), y = d0(b);
+  if(!x || !y) return 0;
+  return Math.max(0, Math.round((y-x)/86400000));
+}
+
 function itemRowHtml(it){
   const k = kindInfo(it.kind);
   const st = statusInfo(it.kind, it.status);
+  const carrier = carrierOf(it);
+
   const bits = [];
   if(k.route && (it.from_place || it.to_place))
     bits.push(`${escapeHtml(it.from_place||'?')} \u2192 ${escapeHtml(it.to_place||'?')}`);
   else if(it.place) bits.push(escapeHtml(it.place));
   if(it.reference) bits.push(escapeHtml(it.reference));
-  const who = whoLabel(it);
-  if(who !== 'Everyone') bits.push(`<span class="who-tag">${escapeHtml(who)}</span>`);
+  bits.push(whoDots(it));
   if(it.status !== 'confirmed')
     bits.push(`<span style="color:${st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'#9c6a1f'}">${st.label}</span>`);
 
-  const timeMain = fmtTime(it.start_time) || (it.end_date ? fmtShort(it.start_date) : '\u2014');
-  const timeSub = (it.kind==='hotel' && it.end_date) ? 'to ' + fmtShort(it.end_date) : fmtTime(it.end_time);
+  // times, labelled so departure and arrival are not read as equals
+  let amt;
+  if(it.kind === 'hotel'){
+    const nights = nightsBetween(it.start_date, it.end_date);
+    amt = `<span class="lbl">In</span>${fmtShort(it.start_date)}
+      ${it.end_date ? `<span class="fx strong"><span class="lbl">Out</span>${fmtShort(it.end_date)}</span>` : ''}
+      ${nights ? `<span class="nights">${nights} night${nights===1?'':'s'}</span>` : ''}`;
+  } else if(k.route){
+    const dep = fmtTime(it.start_time), arr = fmtTime(it.end_time);
+    amt = `${dep ? `<span class="lbl">Dep</span>${dep}` : fmtShort(it.start_date)}
+      ${arr ? `<span class="fx"><span class="lbl">Arr</span>${arr}</span>` : ''}`;
+  } else {
+    amt = `${fmtTime(it.start_time) || fmtShort(it.start_date) || '\u2014'}
+      ${fmtTime(it.end_time) ? `<span class="fx">${fmtTime(it.end_time)}</span>` : ''}`;
+  }
 
-  return `<div class="ledger-row" onclick="openItemModal('${it.id}')">
+  return `<div class="ledger-row" style="background:${tint(k.color, 0.05)}"
+       onclick="openItemModal('${it.id}')">
     <div class="cat-dot" style="background:${k.color}"></div>
     <div class="ledger-mid">
-      <div class="cat"><span class="ic">${k.ic}</span>${escapeHtml(it.title||k.label)}${
+      <div class="cat"><span class="ic">${k.ic}</span>${
+        carrier ? `<span class="carrier">${escapeHtml(carrier)}</span> ` : ''}${
+        escapeHtml(legTitle(it))}${
         it._leg==='ret' ? '<span class="leg-tag">RETURN</span>'
         : (it.return_date ? '<span class="leg-tag">OUTBOUND</span>' : '')}</div>
-      ${bits.length ? `<div class="meta">${bits.join(' &middot; ')}</div>` : ''}
+      ${bits.filter(Boolean).length ? `<div class="meta">${bits.filter(Boolean).join(' &middot; ')}</div>` : ''}
       ${flightStatusUrl(it) ? `<button class="linkbtn" onclick="event.stopPropagation();openFlightStatus('${it.id}','${it._leg||'out'}')">CHECK FLIGHT STATUS &rarr;</button>` : ''}
     </div>
-    <div class="ledger-amt">${timeMain}${timeSub?`<span class="fx">${timeSub}</span>`:''}</div>
+    <div class="ledger-amt">${amt}</div>
   </div>`;
+}
+
+/* Never render a bare airline code with no number behind it. */
+function legTitle(it){
+  const k = kindInfo(it.kind);
+  if(it.kind !== 'flight') return it.title || k.label;
+  const code = it._leg === 'ret' ? (it.return_airline_code || it.airline_code) : it.airline_code;
+  const num  = it._leg === 'ret' ? it.return_flight_number : it.flight_number;
+  if(num) return [code, num].filter(Boolean).join(' ');
+  if(it._leg === 'ret') return 'Return flight';
+  return it.title || k.label;
 }
 
 function addDays(iso, k){
@@ -2051,7 +2154,8 @@ function docCardHtml(d, hideTrip){
   const meta = [];
   if(!hideTrip) meta.push(escapeHtml(docScopeLabel(d)));
   if(d.issuer)      meta.push(escapeHtml(d.issuer));
-  if(d.expiry_date) meta.push('expires ' + fmtShort(d.expiry_date) + ' ' + (d0(d.expiry_date)||new Date()).getFullYear());
+  if(d.expiry_date && !/^(Valid to|Expires)/.test(st.label))
+    meta.push(fmtShort(d.expiry_date) + ' ' + (d0(d.expiry_date)||new Date()).getFullYear());
   if(d.number_last4) meta.push('\u2022\u2022\u2022\u2022 ' + escapeHtml(d.number_last4));
   if(d.kept_at)     meta.push(escapeHtml(d.kept_at));
 
@@ -2183,7 +2287,7 @@ function renderDocs(){
                     ticket:'TICKETS', id:'ID CARDS', other:'OTHER DOCUMENTS' };
 
   body.innerHTML =
-    (needsWork ? `<div class="banner">${needsWork} ${needsWork===1?'document needs':'documents need'} attention \u2014 expiring, expired or not yet arranged.</div>` : '') +
+    (needsWork ? `<div class="info-note">${needsWork} ${needsWork===1?'document needs':'documents need'} attention \u2014 expiring, expired or not yet arranged. They are listed first.</div>` : '') +
     DOC_TYPES.map(t=>{
       const docs = list.filter(d=>d.doc_type === t.id).sort((a,b)=>{
         const ra = rank[docDisplayStatus(a).tone], rb = rank[docDisplayStatus(b).tone];
@@ -2218,6 +2322,24 @@ function renderSettings(){
         </span>
       </div>`).join('') || `<div class="settings-item" style="cursor:default;"><span class="sub">No travellers yet</span></div>`;
   }
+  const lk = document.getElementById('settings-lookups');
+  const showLk = canEdit() && lookups.length;
+  document.getElementById('lookup-label').style.display = showLk ? 'flex' : 'none';
+  lk.style.display = showLk ? 'block' : 'none';
+  if(showLk){
+    lk.innerHTML = lookups.map(l=>`
+      <div class="settings-item" style="cursor:default;">
+        <span>${escapeHtml(l.label)}</span>
+        <span style="display:flex;align-items:center;gap:12px;">
+          <span class="sub">${escapeHtml((l.kind||'').toUpperCase())}</span>
+          <span style="color:#9c6a1f;cursor:pointer;font-size:12px;"
+                onclick="renameLookup('${l.id}')">rename</span>
+          <span style="color:var(--coral);cursor:pointer;font-size:15px;"
+                onclick="deleteLookup('${l.id}')">&times;</span>
+        </span>
+      </div>`).join('');
+  }
+
   document.getElementById('set-archive-count').textContent =
     archivedTrips().length ? archivedTrips().length + ' \u203a' : 'None \u203a';
   const due = expiredFiles();
@@ -2260,6 +2382,25 @@ async function removeTraveller(id){
   await loadTravellers(); await loadTripRoster();
   renderSettings();
   showToast('Removed from the roster');
+}
+
+async function renameLookup(id){
+  const l = lookups.find(x=>x.id===id);
+  if(!l) return;
+  const next = prompt('Rename this entry', l.label);
+  if(next === null) return;
+  const label = next.trim();
+  if(label.length < 2) return;
+  const { error } = await sb.from('lookup_entries').update({ label }).eq('id', id);
+  if(error){ console.error(error); showToast('Could not rename it'); return; }
+  await loadLookups(); renderSettings(); showToast('Renamed');
+}
+async function deleteLookup(id){
+  const l = lookups.find(x=>x.id===id);
+  if(!l || !confirm(`Remove "${l.label}" from the suggestions? Anything already saved keeps its text.`)) return;
+  const { error } = await sb.from('lookup_entries').delete().eq('id', id);
+  if(error){ console.error(error); showToast('Could not remove it'); return; }
+  await loadLookups(); renderSettings(); showToast('Removed from suggestions');
 }
 
 /* ============================= TRIP MODAL ============================= */
@@ -2471,8 +2612,15 @@ function setKind(id){
   document.querySelectorAll('.kind-chip').forEach(c=>c.classList.toggle('active', c.dataset.kind===id));
   const k = kindInfo(id);
   const isFlight = id === 'flight';
-  document.getElementById('it-flight-group').style.display = isFlight ? 'block' : 'none';
-  document.getElementById('it-title-group').style.display  = isFlight ? 'none'  : 'block';
+  const isTrain = id === 'train' || id === 'car';
+  const carrierGroup = isFlight || isTrain;
+  document.getElementById('it-flight-group').style.display = carrierGroup ? 'block' : 'none';
+  document.getElementById('it-title-group').style.display  = isFlight ? 'none' : 'block';
+  document.getElementById('it-airline-wrap').style.display  = isFlight ? 'block' : 'none';
+  document.getElementById('it-operator-wrap').style.display = isTrain ? 'block' : 'none';
+  document.getElementById('it-carrier-label').textContent =
+    isFlight ? 'AIRLINE & FLIGHT NUMBER' : 'OPERATOR & SERVICE NUMBER';
+  document.getElementById('it-flightno').placeholder = isFlight ? '801' : 'TGV 9260';
   document.getElementById('it-route-group').style.display = k.route ? 'block' : 'none';
   document.getElementById('it-return-group').style.display = isFlight ? 'block' : 'none';
   if(!isFlight) setReturnOn(false);
@@ -2552,6 +2700,10 @@ function openItemModal(id, presetTripId){
   const al = AIRLINES.find(a=>a[0]===itemAirlineCode);
   document.getElementById('it-airline').value = al ? al[1] : (itemAirlineCode || '');
   document.getElementById('it-flightno').value = it?.flight_number || '';
+  document.getElementById('it-operator').value = it?.operator || '';
+  itemRetAirlineCode = it?.return_airline_code || '';
+  const ral = AIRLINES.find(a=>a[0]===itemRetAirlineCode);
+  document.getElementById('it-retairline').value = ral ? ral[1] : (itemRetAirlineCode || '');
   document.getElementById('it-title').value = it?.title || '';
   document.getElementById('it-from').value = it?.from_place || '';
   document.getElementById('it-to').value = it?.to_place || '';
@@ -2578,6 +2730,10 @@ async function saveItem(){
   const flightNo = document.getElementById('it-flightno').value.trim();
   let title = document.getElementById('it-title').value.trim();
   if(isFlight) title = [itemAirlineCode || airlineTxt, flightNo].filter(Boolean).join(' ').trim();
+  else if(itemKind === 'train' || itemKind === 'car'){
+    const op = document.getElementById('it-operator').value.trim();
+    if(!title) title = [op, flightNo].filter(Boolean).join(' ').trim();
+  }
   if(!tripId){ showToast('Pick a trip first'); return; }
   if(!title){ showToast(isFlight ? 'Add the airline or flight number'
                                  : 'Add a name so the family knows what this is'); return; }
@@ -2601,6 +2757,9 @@ async function saveItem(){
     return_time: (isFlight && returnOn) ? (document.getElementById('it-rettime').value || null) : null,
     return_flight_number: (isFlight && returnOn)
       ? (document.getElementById('it-retno').value.trim() || null) : null,
+    return_airline_code: (isFlight && returnOn) ? (itemRetAirlineCode || itemAirlineCode || null) : null,
+    operator: (itemKind === 'train' || itemKind === 'car')
+      ? (document.getElementById('it-operator').value.trim() || null) : null,
     from_code: itemFromCode || codeFromText(document.getElementById('it-from').value) || null,
     to_code: itemToCode || codeFromText(document.getElementById('it-to').value) || null,
     status: itemStatus,
@@ -2716,7 +2875,7 @@ function openDocModal(id, presetTripId){
   const d = id ? documents.find(x=>x.id===id) : null;
   document.getElementById('doc-modal-title').textContent = d ? 'Edit document' : 'Add a document';
 
-  docWho = d ? docTravellerIds(d).slice() : (travellers[0] ? [travellers[0].id] : []);
+  docWho = d ? docTravellerIds(d).slice() : [];
 
   const trsel = document.getElementById('dc-trip');
   trsel.innerHTML = `<option value="">The person (all trips)</option>` +
@@ -2757,7 +2916,7 @@ function buildDocWho(){
   document.getElementById('dc-who-hint').textContent = multi
     ? 'One policy can cover several people. Tick everyone it applies to.'
     : 'Passports and visas belong to one person.';
-  if(!editingDocId && docWho.length === 1){
+  if(!editingDocId && docWho.length === 1 && !document.getElementById('dc-trip').value){
     const t = travFor(docWho[0]);
     const trsel = document.getElementById('dc-trip');
     if(t && t.kind !== 'family' && !trsel.value && activeTripId){
@@ -3167,9 +3326,14 @@ function attachAutocomplete(input, kindFn, onPick){
   }
   async function chooseFreeText(){
     const kind = kindFn();
-    const label = input.value.trim();
+    let label = input.value.trim();
     close();
     if(label.length < 2) return;
+    if(label === label.toLowerCase()){
+      // a hurried lowercase entry shouldn't become everyone's suggestion
+      label = label.replace(/\b[a-z]/g, c=>c.toUpperCase());
+      input.value = label;
+    }
     if(!lookupRows(kind).some(r=>r.label.toLowerCase() === label.toLowerCase())){
       const { data, error } = await sb.from('lookup_entries')
         .insert({ kind, label, created_by: currentUser?.id }).select().single();
@@ -3327,6 +3491,8 @@ function setReturnOn(on){
   btn.textContent = returnOn ? 'Round trip \u2713' : 'Add a return leg';
   document.getElementById('it-return-fields').style.display = returnOn ? 'block' : 'none';
   if(returnOn){
+    const ra = document.getElementById('it-retairline');
+    if(!ra.value){ ra.value = document.getElementById('it-airline').value; itemRetAirlineCode = itemAirlineCode; }
     const from = document.getElementById('it-from').value;
     const to = document.getElementById('it-to').value;
     document.getElementById('it-return-hint').textContent =
@@ -3353,6 +3519,7 @@ function wirePickers(){
   attachAutocomplete(document.getElementById('it-to'),   placeKind, r=>{ itemToCode   = r.code || ''; });
   attachAutocomplete(document.getElementById('it-place'), ()=>'city', ()=>{});
   attachAutocomplete(document.getElementById('it-airline'), ()=>'airline', r=>{ itemAirlineCode = r.code || ''; });
+  attachAutocomplete(document.getElementById('it-retairline'), ()=>'airline', r=>{ itemRetAirlineCode = r.code || ''; });
   attachAutocomplete(document.getElementById('tp-origin'), ()=>'city', ()=>{});
   attachAutocomplete(document.getElementById('tp-dest'),   ()=>'city', ()=>{});
   document.getElementById('dc-file').addEventListener('change', e=>{
