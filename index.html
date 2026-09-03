@@ -342,6 +342,39 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* collapsible sections */
+  .sechead{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;
+    padding:16px 2px 9px;text-align:left;cursor:pointer;}
+  .sechead .cv{color:var(--text-faint);font-size:12px;transition:transform .18s;display:inline-block;}
+  .sechead.open .cv{transform:rotate(90deg);}
+  .sechead .st{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;
+    text-transform:uppercase;color:#4a5160;font-weight:600;}
+  .sechead .ss{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    color:var(--text-faint);letter-spacing:0.03em;}
+  .sechead .ss.warn{color:#9c6a1f;}
+  .sechead .ss.bad{color:var(--coral);}
+  .sechead .adder{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;
+    font-weight:700;color:#9c6a1f;letter-spacing:0.03em;}
+
+  /* colour band on trip cards */
+  .trip-card{position:relative;padding-left:22px;}
+  .trip-card .band{position:absolute;left:0;top:0;bottom:0;width:7px;
+    border-radius:var(--radius) 0 0 var(--radius);}
+  .trip-head{position:relative;padding-left:14px;}
+  .trip-head .hband{position:absolute;left:0;top:4px;bottom:6px;width:5px;border-radius:3px;}
+
+  .leg-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.1em;
+    padding:2px 6px;border-radius:6px;background:var(--surface-2);color:var(--text-muted);
+    margin-left:7px;vertical-align:middle;}
+
+  /* change log */
+  .hist-row{display:flex;gap:11px;padding:10px 2px;border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-row .hw{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-faint);
+    min-width:60px;flex-shrink:0;padding-top:2px;letter-spacing:0.03em;}
+  .hist-row .hd{flex:1;font-size:13px;line-height:1.55;color:var(--text);}
+  .hist-row .hd .fld{color:var(--text-muted);font-size:12px;display:block;margin-top:2px;}
+
   /* next-up slider */
   .nu-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
     scrollbar-width:none;margin-bottom:10px;}
@@ -564,10 +597,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <div id="trip-hero"></div>
       <div class="trip-head" id="trip-head"></div>
       <div class="chip-row" id="trip-filter"></div>
-      <div id="trip-ready"></div>
-      <div id="trip-body"></div>
-      <button class="addbar" id="trip-add-booking" style="display:none;"
-              onclick="openItemModal(null, activeTripId)">+ Add a flight, stay or booking</button>
+      <div id="trip-banner"></div>
+      <div id="trip-sections"></div>
     </div>
 
     <!-- DOCUMENTS -->
@@ -746,6 +777,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         <input type="time" id="it-endtime">
       </div>
     </div>
+    <div class="form-group" id="it-return-group" style="display:none;">
+      <label class="form-label">RETURN</label>
+      <div class="status-row">
+        <div class="status-btn" id="it-return-toggle" onclick="toggleReturn()">Add a return leg</div>
+      </div>
+      <div id="it-return-fields" style="display:none;margin-top:10px;">
+        <div class="two-col" style="margin-bottom:8px;">
+          <input type="date" id="it-retdate">
+          <input type="time" id="it-rettime">
+        </div>
+        <input type="text" id="it-retno" placeholder="Return flight number">
+        <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;"
+           id="it-return-hint"></p>
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label">REFERENCE</label>
       <input type="text" id="it-ref" placeholder="QK7T2M" style="font-family:'IBM Plex Mono',monospace;">
@@ -784,7 +830,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     </div>
     <div class="form-group">
       <label class="form-label">WHOSE</label>
-      <select id="dc-traveller"></select>
+      <div class="chip-wrap" id="dc-travellers"></div>
+      <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;"
+         id="dc-who-hint"></p>
     </div>
     <div class="form-group">
       <label class="form-label">APPLIES TO</label>
@@ -843,6 +891,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <label class="form-label">NOTES</label>
       <textarea id="dc-notes" rows="2" placeholder="Anything worth remembering."></textarea>
     </div>
+    <div id="dc-history" style="display:none;margin-top:4px;"></div>
     <button class="save-btn" id="dc-save" onclick="saveDoc()">Save</button>
     <button class="delete-btn" id="dc-delete" style="display:none;" onclick="deleteDoc()">Remove</button>
     <div class="modal-close" onclick="closeModal('modal-doc')">Cancel</div>
@@ -960,6 +1009,32 @@ let editingDocId = null;
 let docType_ = 'visa';
 let docStatus_ = 'not_started';
 let pendingDocFile = null;
+let docWho = [];
+let auditRows = [];
+let sectionOpen = { schedule:true, paperwork:null, documents:null, history:false };
+
+const TRIP_COLORS = ['#b8863f','#2f7a6b','#4c6fa0','#b84a34','#6b5b95','#7a8a4f','#a68f2e','#5b6b7a'];
+function tripColor(t){
+  if(t && t.color) return t.color;
+  const key = String(t && t.id || '');
+  let h = 2166136261;
+  for(let i=0;i<key.length;i++){ h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return TRIP_COLORS[Math.abs(h) % TRIP_COLORS.length];
+}
+/* Passports and visas belong to one person. Insurance, tickets and the
+   rest are often a single policy covering the whole party. */
+function docIsShareable(typeId){ return ['insurance','ticket','other'].includes(typeId); }
+function docTravellerIds(d){
+  if(Array.isArray(d.traveller_ids) && d.traveller_ids.length) return d.traveller_ids;
+  return d.traveller_id ? [d.traveller_id] : [];
+}
+function docWhoLabel(d){
+  const ids = docTravellerIds(d);
+  if(!ids.length) return 'Nobody';
+  if(travellers.length && ids.length >= travellers.length) return 'Everyone';
+  if(ids.length > 2) return ids.length + ' travellers';
+  return ids.map(id=>firstName(travName(id))).join(' & ');
+}
 let itemAirlineCode = '', itemFromCode = '', itemToCode = '';
 let tripVisaPolicy = 'unknown';
 let tripVisaOverrides = {};   // travellerId -> true/false, overriding the trip
@@ -1038,6 +1113,24 @@ function isArchived(t){
   const d = daysUntil(t.end_date);
   return d !== null && d < -365;
 }
+/* A round trip is one record drawn on two dates. The schedule is
+   chronological, so the return has to appear as its own row. */
+function legsOf(i){
+  const out = [{ ...i, _leg:'out' }];
+  if(i.kind === 'flight' && i.return_date){
+    out.push({ ...i, _leg:'ret',
+      start_date: i.return_date,
+      start_time: i.return_time || null,
+      end_date: null, end_time: null,
+      flight_number: i.return_flight_number || i.flight_number,
+      from_place: i.to_place, to_place: i.from_place,
+      from_code: i.to_code, to_code: i.from_code,
+      title: [i.airline_code || '', i.return_flight_number || ''].filter(Boolean).join(' ')
+             || (i.title || '') });
+  }
+  return out;
+}
+function expandedItems(list){ return list.flatMap(legsOf); }
 function itemSort(a,b){ return (`${a.start_date||'9999'}T${a.start_time||'99:99'}`).localeCompare(`${b.start_date||'9999'}T${b.start_time||'99:99'}`); }
 function forMe(it){
   const w = it.member_ids || [];
@@ -1464,6 +1557,7 @@ async function refreshInBackground(thenTab){
   try{
     await loadTrips(); await loadTripRoster(); await loadItems();
     await loadAttachments(); await loadDocuments();
+    if(thenTab==='trip' && activeTripId) await loadAudit(activeTripId);
     if(activeTab===thenTab){
       if(thenTab==='home') renderHome();
       if(thenTab==='trip') renderTrip();
@@ -1474,7 +1568,7 @@ async function refreshInBackground(thenTab){
 function logout(){
   sb.auth.signOut();
   currentUser=null; profiles=[]; trips=[]; items=[]; travellers=[];
-  tripRoster=[]; attachments=[]; documents=[]; lookups=[];
+  tripRoster=[]; attachments=[]; documents=[]; lookups=[]; auditRows=[];
   document.getElementById('main-app').style.display='none';
   document.getElementById('navbar').style.display='none';
   showLoginScreen();
@@ -1522,7 +1616,7 @@ function docsForTrip(tripId){
   const onTrip = travellersOn(tripId).map(t=>t.id);
   return documents.filter(d =>
     (d.trip_id === tripId) ||
-    (!d.trip_id && onTrip.includes(d.traveller_id))
+    (!d.trip_id && docTravellerIds(d).some(id=>onTrip.includes(id)))
   );
 }
 function readiness(tripId){
@@ -1556,7 +1650,7 @@ function ringSvg(pct, color){
 function nextEventsForMe(limit){
   const now = `${todayISO()}T00:00`;
   const live = new Set(trips.filter(t=>!isArchived(t)).map(t=>t.id));
-  return items
+  return expandedItems(items)
     .filter(i=> i.start_date && live.has(i.trip_id) && forMe(i) && i.status!=='cancelled')
     .filter(i=> `${i.start_date}T${i.start_time||'00:00'}` >= now)
     .sort(itemSort)
@@ -1586,8 +1680,8 @@ function nextPerTrip(limit){
   const now = `${todayISO()}T00:00`;
   const out = [];
   upcomingTrips().forEach(t=>{
-    const ev = items
-      .filter(i=> i.trip_id===t.id && i.start_date && forMe(i) && i.status!=='cancelled')
+    const ev = expandedItems(items.filter(i=>i.trip_id===t.id))
+      .filter(i=> i.start_date && forMe(i) && i.status!=='cancelled')
       .filter(i=> `${i.start_date}T${i.start_time||'00:00'}` >= now)
       .sort(itemSort)[0];
     out.push({ trip:t, ev, when: ev ? `${ev.start_date}T${ev.start_time||'00:00'}`
@@ -1663,6 +1757,7 @@ function tripCardHtml(trip, isPast){
     ? `<span class="cd">${escapeHtml(countdownLabel(days))}</span>` : '';
   const route = [trip.origin, trip.destination].filter(Boolean).join(' \u2192 ');
   return `<div class="trip-card ${isPast?'past':''}" onclick="openTrip('${trip.id}')">
+    <span class="band" style="background:${tripColor(trip)}"></span>
     <div class="tc-top">
       <div style="flex:1;min-width:0;">
         <div class="tc-name">${escapeHtml(trip.title||'Untitled trip')}</div>
@@ -1670,7 +1765,7 @@ function tripCardHtml(trip, isPast){
       </div>
       <div class="tc-when">${fmtRange(trip.start_date, trip.end_date)}${cd}</div>
     </div>
-    ${r.total ? `<div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.pct*100)}%"></div></div>
+    ${r.total ? `<div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.pct*100)}%;background:${tripColor(trip)}"></div></div>
     <div class="tc-foot"><span>${r.bookOk}/${r.bookTotal} booked</span><span>${r.docOk}/${r.docTotal} documents</span></div>` : ''}
   </div>`;
 }
@@ -1696,17 +1791,24 @@ function renderTripsList(){
 }
 
 /* ============================= TRIP DETAIL ============================= */
-function openTrip(id){ activeTripId = id; tripFilterMine = false; switchTab('trip'); }
+function openTrip(id){
+  activeTripId = id;
+  tripFilterMine = false;
+  auditRows = [];
+  switchTab('trip');
+  loadAudit(id).then(()=>{ if(activeTab==='trip' && activeTripId===id) renderTrip(); });
+}
 
 function renderTrip(){
   const trip = trips.find(t=>t.id===activeTripId);
   const head = document.getElementById('trip-head');
-  const body = document.getElementById('trip-body');
   const filter = document.getElementById('trip-filter');
+  const banner = document.getElementById('trip-banner');
+  const secs = document.getElementById('trip-sections');
   if(!trip){
-    head.innerHTML=''; filter.innerHTML='';
+    head.innerHTML=''; filter.innerHTML=''; banner.innerHTML='';
     document.getElementById('trip-hero').innerHTML='';
-    body.innerHTML='<div class="empty-state">That trip is no longer available.</div>';
+    secs.innerHTML='<div class="empty-state">That trip is no longer available.</div>';
     return;
   }
   paintHero(trip);
@@ -1714,6 +1816,7 @@ function renderTrip(){
   const days = daysUntil(trip.start_date);
   const route = [trip.origin, trip.destination].filter(Boolean).join(' \u2192 ');
   head.innerHTML = `
+    <span class="hband" style="background:${tripColor(trip)}"></span>
     <h1>${escapeHtml(trip.title||'Untitled trip')}</h1>
     ${route ? `<div class="th-route">${escapeHtml(route)}</div>` : ''}
     <div class="th-dates">${fmtRange(trip.start_date, trip.end_date)}${(days!==null&&days>=0)?` &middot; ${escapeHtml(countdownLabel(days).toUpperCase())}`:''}</div>
@@ -1727,44 +1830,107 @@ function renderTrip(){
       <span class="dot" style="background:${currentUser.color||'#b8863f'}">${initials(currentUser.name)}</span>Just mine
     </div>`;
 
+  // ---- gather ----
   let list = tripItems(trip.id);
   if(tripFilterMine) list = list.filter(forMe);
-  const sched = list.slice().sort(itemSort);
+  const sched = expandedItems(list).sort(itemSort);
+
   let docs = docsForTrip(trip.id);
   if(tripFilterMine){
     const mine = myTravellerId();
-    docs = docs.filter(d=>d.traveller_id===mine);
+    docs = docs.filter(d=>docTravellerIds(d).includes(mine));
   }
-  docs.sort((a,b)=> (travName(a.traveller_id)).localeCompare(travName(b.traveller_id)));
-  renderReadiness(trip);
-  document.getElementById('trip-add-booking').style.display = canEdit() ? 'block' : 'none';
+  docs.sort((a,b)=> docWhoLabel(a).localeCompare(docWhoLabel(b)));
+
+  const rows = travellersOn(trip.id).map(t=>({ t, r: travellerReadiness(t.id, trip) }));
+  const bad  = rows.filter(x=>x.r.tone==='bad').length;
+  const warn = rows.filter(x=>x.r.tone==='warn').length;
+
+  // ---- banner stays at the top whatever is collapsed ----
+  banner.innerHTML = bad
+    ? `<div class="banner bad"><strong>${bad} ${bad===1?'traveller needs':'travellers need'} attention</strong> before this trip.</div>`
+    : warn ? `<div class="banner">${warn} ${warn===1?'traveller has':'travellers have'} paperwork still to sort out.</div>`
+    : '';
+
+  // ---- sections, schedule first ----
+  const unconfirmed = list.filter(i=>i.status==='pending').length;
+  const docTrouble = docs.filter(d=>{
+    const st = docDisplayStatus(d); return st.tone==='bad' || st.tone==='warn';
+  }).length;
 
   let html = '';
-  if(sched.length===0){
-    html += `<div class="empty-state" style="margin-top:14px;">${tripFilterMine ? 'Nothing on this trip is assigned to you yet.' : 'No flights, trains or stays added yet.'}</div>`;
-  } else {
-    let currentDay = null, open = false;
-    html += '<div class="ledger" style="margin-top:14px;">';
-    sched.forEach(it=>{
-      const key = it.start_date || 'tbc';
-      if(key !== currentDay){
-        currentDay = key;
-        const dLeft = daysUntil(it.start_date);
-        const rest = key==='tbc' ? 'DATE TO CONFIRM' : (dLeft!==null && dLeft>=0 ? (dLeft===0?'TODAY':'IN '+dLeft+' DAYS') : '');
-        html += `<div class="day-head"><div class="dh-day">${key==='tbc'?'Not scheduled':fmtDay(it.start_date)}</div><div class="dh-rest">${rest}</div></div>`;
-      }
-      html += itemRowHtml(it);
-    });
-    html += '</div>';
-  }
 
-  html += `<div class="section-label"><div class="eyebrow">VISAS &amp; DOCUMENTS</div>${
-    canEdit() ? `<a onclick="openDocModal(null,'${trip.id}')">ADD &rarr;</a>` : ''}</div>`;
-  html += docs.length ? docs.map(d=>docCardHtml(d,true)).join('')
-        : `<div class="empty-state">No documents recorded for this trip.</div>`;
+  html += section('schedule', 'Schedule',
+    sched.length ? `${sched.length} item${sched.length===1?'':'s'}${unconfirmed ? `, ${unconfirmed} to confirm` : ''}` : 'nothing yet',
+    unconfirmed ? 'warn' : '',
+    scheduleHtml(sched),
+    canEdit() ? `openItemModal(null,'${trip.id}')` : null, bad || warn);
 
-  body.innerHTML = html;
+  html += section('paperwork', 'Paperwork',
+    rows.length ? (bad||warn ? `${bad+warn} to check` : 'all clear') : 'nobody added',
+    bad ? 'bad' : warn ? 'warn' : '',
+    paperworkHtml(trip, rows), null, bad || warn);
+
+  html += section('documents', 'Visas & documents',
+    docs.length ? `${docs.length} recorded${docTrouble ? `, ${docTrouble} to check` : ''}` : 'none',
+    docTrouble ? 'warn' : '',
+    docs.length ? docs.map(d=>docCardHtml(d,true)).join('')
+                : `<div class="empty-state">No documents recorded for this trip.</div>`,
+    canEdit() ? `openDocModal(null,'${trip.id}')` : null, docTrouble);
+
+  html += section('history', 'Change log',
+    auditRows.length ? `${auditRows.length} change${auditRows.length===1?'':'s'}` : 'none yet',
+    '', historyHtml(auditRows), null, false);
+
+  secs.innerHTML = html;
 }
+
+function section(key, title, summary, tone, body, addCall, autoOpen){
+  const open = sectionOpen[key] === null || sectionOpen[key] === undefined
+    ? !!autoOpen : !!sectionOpen[key];
+  return `<button class="sechead ${open?'open':''}" onclick="toggleSection('${key}')">
+      <span class="cv">\u203a</span><span class="st">${escapeHtml(title)}</span>
+      <span class="ss ${tone}">${escapeHtml(summary)}</span>
+    </button>
+    ${open ? `<div>${body}${addCall ? `<button class="addbar" onclick="${addCall}">+ Add</button>` : ''}</div>` : ''}`;
+}
+function toggleSection(key){
+  const cur = sectionOpen[key];
+  sectionOpen[key] = !(cur === null || cur === undefined ? true : cur);
+  renderTrip();
+}
+
+function scheduleHtml(sched){
+  if(!sched.length)
+    return `<div class="empty-state">${tripFilterMine ? 'Nothing on this trip is assigned to you yet.' : 'No flights, trains or stays added yet.'}</div>`;
+  let currentDay = null, html = '<div class="ledger">';
+  sched.forEach(it=>{
+    const key = it.start_date || 'tbc';
+    if(key !== currentDay){
+      currentDay = key;
+      const dLeft = daysUntil(it.start_date);
+      const rest = key==='tbc' ? 'DATE TO CONFIRM'
+        : (dLeft!==null && dLeft>=0 ? (dLeft===0?'TODAY':'IN '+dLeft+' DAYS') : '');
+      html += `<div class="day-head"><div class="dh-day">${key==='tbc'?'Not scheduled':fmtDay(it.start_date)}</div><div class="dh-rest">${rest}</div></div>`;
+    }
+    html += itemRowHtml(it);
+  });
+  return html + '</div>';
+}
+
+function paperworkHtml(trip, rows){
+  if(!rows.length) return `<div class="empty-state">Nobody has been added to this trip yet.</div>`;
+  const undecided = (trip.visa_policy || 'unknown') === 'unknown'
+    ? `<div class="neutral">Visa requirements for this trip have not been set.${
+        canEdit() ? ' Open the trip settings to say whether one is needed.' : ''}</div>` : '';
+  return undecided + `<div class="ready">${rows.map(({t,r})=>`
+      <div class="ready-row">
+        <span class="pip ${r.tone}"></span>
+        <span class="avatar" style="width:26px;height:26px;font-size:10px;background:${t.color||'#6b7280'}">${initials(t.name)}</span>
+        <span class="rn">${escapeHtml(firstName(t.name))}<span class="sub">${escapeHtml(r.line)}</span></span>
+      </div>`).join('')}</div>`;
+}
+
 function setTripFilter(mine){ tripFilterMine = mine; renderTrip(); }
 
 function addMonths(iso, m){
@@ -1779,7 +1945,7 @@ function fmtMonthYear(iso){
 /* For one traveller on one trip: is their paperwork in order? */
 function travellerReadiness(travId, trip){
   const needVisa = visaNeeded(trip, travId);
-  const mine = documents.filter(d=>d.traveller_id===travId);
+  const mine = documents.filter(d=>docTravellerIds(d).includes(travId));
   const end = trip.end_date || trip.start_date;
   const bits = [];
   let tone = 'ok';
@@ -1817,51 +1983,30 @@ function travellerReadiness(travId, trip){
   return { tone, line: bits.join(' \u00b7 ') };
 }
 
-function renderReadiness(trip){
-  const el = document.getElementById('trip-ready');
-  const on = travellersOn(trip.id);
-  if(!on.length){ el.innerHTML=''; return; }
-
-  const rows = on.map(t=>({ t, r: travellerReadiness(t.id, trip) }));
-  const bad  = rows.filter(x=>x.r.tone==='bad').length;
-  const warn = rows.filter(x=>x.r.tone==='warn').length;
-
-  const banner = bad
-    ? `<div class="banner bad"><strong>${bad} ${bad===1?'traveller needs':'travellers need'} attention</strong> before this trip.</div>`
-    : warn ? `<div class="banner">${warn} ${warn===1?'traveller has':'travellers have'} paperwork still to sort out.</div>`
-    : '';
-
-  const undecided = (trip.visa_policy || 'unknown') === 'unknown'
-    ? `<div class="neutral">Visa requirements for this trip have not been set.${
-        canEdit() ? ' Open the trip settings to say whether one is needed.' : ''}</div>` : '';
-
-  el.innerHTML = banner + undecided + `<div class="section-label"><div class="eyebrow">PAPERWORK</div></div>
-    <div class="ready">${rows.map(({t,r})=>`
-      <div class="ready-row">
-        <span class="pip ${r.tone}"></span>
-        <span class="avatar" style="width:26px;height:26px;font-size:10px;background:${t.color||'#6b7280'}">${initials(t.name)}</span>
-        <span class="rn">${escapeHtml(firstName(t.name))}<span class="sub">${escapeHtml(r.line)}</span></span>
-      </div>`).join('')}</div>`;
-}
-
 function itemRowHtml(it){
   const k = kindInfo(it.kind);
   const st = statusInfo(it.kind, it.status);
   const bits = [];
-  if(k.route && (it.from_place || it.to_place)) bits.push(`${escapeHtml(it.from_place||'?')} \u2192 ${escapeHtml(it.to_place||'?')}`);
+  if(k.route && (it.from_place || it.to_place))
+    bits.push(`${escapeHtml(it.from_place||'?')} \u2192 ${escapeHtml(it.to_place||'?')}`);
   else if(it.place) bits.push(escapeHtml(it.place));
   if(it.reference) bits.push(escapeHtml(it.reference));
   const who = whoLabel(it);
-  if(who!=='Everyone') bits.push(`<span class="who-tag">${escapeHtml(who)}</span>`);
-  if(it.status!=='confirmed') bits.push(`<span style="color:${st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'#9c6a1f'}">${st.label}</span>`);
+  if(who !== 'Everyone') bits.push(`<span class="who-tag">${escapeHtml(who)}</span>`);
+  if(it.status !== 'confirmed')
+    bits.push(`<span style="color:${st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'#9c6a1f'}">${st.label}</span>`);
+
   const timeMain = fmtTime(it.start_time) || (it.end_date ? fmtShort(it.start_date) : '\u2014');
-  const timeSub = it.kind==='hotel' && it.end_date ? 'to '+fmtShort(it.end_date) : fmtTime(it.end_time);
+  const timeSub = (it.kind==='hotel' && it.end_date) ? 'to ' + fmtShort(it.end_date) : fmtTime(it.end_time);
+
   return `<div class="ledger-row" onclick="openItemModal('${it.id}')">
     <div class="cat-dot" style="background:${k.color}"></div>
     <div class="ledger-mid">
-      <div class="cat"><span class="ic">${k.ic}</span>${escapeHtml(it.title||k.label)}</div>
-      ${bits.length?`<div class="meta">${bits.join(' &middot; ')}</div>`:''}
-      ${flightStatusUrl(it) ? `<button class="linkbtn" onclick="event.stopPropagation();openFlightStatus('${it.id}')">CHECK FLIGHT STATUS &rarr;</button>` : ''}
+      <div class="cat"><span class="ic">${k.ic}</span>${escapeHtml(it.title||k.label)}${
+        it._leg==='ret' ? '<span class="leg-tag">RETURN</span>'
+        : (it.return_date ? '<span class="leg-tag">OUTBOUND</span>' : '')}</div>
+      ${bits.length ? `<div class="meta">${bits.join(' &middot; ')}</div>` : ''}
+      ${flightStatusUrl(it) ? `<button class="linkbtn" onclick="event.stopPropagation();openFlightStatus('${it.id}','${it._leg||'out'}')">CHECK FLIGHT STATUS &rarr;</button>` : ''}
     </div>
     <div class="ledger-amt">${timeMain}${timeSub?`<span class="fx">${timeSub}</span>`:''}</div>
   </div>`;
@@ -1895,7 +2040,10 @@ function docScopeLabel(d){
   const t = trips.find(x=>x.id===d.trip_id);
   return t ? t.title : 'One trip';
 }
-function canSeeScan(d){ return canEdit() || d.traveller_id === myTravellerId(); }
+function canSeeScan(d){
+  const me = myTravellerId();
+  return canEdit() || (!!me && docTravellerIds(d).includes(me));
+}
 
 function docCardHtml(d, hideTrip){
   const t  = docType(d.doc_type);
@@ -1910,7 +2058,7 @@ function docCardHtml(d, hideTrip){
   return `<div class="doc-card" onclick="openDocModal('${d.id}')">
     <div class="doc-top">
       <span style="font-size:17px;">${t.ic}</span>
-      <span class="dt-name">${escapeHtml(firstName(travName(d.traveller_id)))} \u2014 ${escapeHtml(d.title || t.label)}</span>
+      <span class="dt-name">${escapeHtml(docWhoLabel(d))} \u2014 ${escapeHtml(d.title || t.label)}</span>
       <span class="stamp ${st.tone}">${st.label}</span>
     </div>
     ${meta.length ? `<div class="doc-meta">${meta.join(' &middot; ')}</div>` : ''}
@@ -1921,6 +2069,85 @@ function docCardHtml(d, hideTrip){
         : `<div style="margin-top:9px;font-size:11.5px;color:var(--text-faint);
              font-family:'IBM Plex Mono',monospace;">COPY ON FILE</div>`) : ''}
   </div>`;
+}
+
+/* ============================= CHANGE LOG ============================= */
+const FIELD_LABELS = {
+  title:'name', start_date:'date', start_time:'time', end_date:'end date', end_time:'end time',
+  from_place:'from', to_place:'to', place:'location', reference:'reference', status:'status',
+  airline_code:'airline', flight_number:'flight number', return_date:'return date',
+  return_time:'return time', return_flight_number:'return flight', member_ids:'who it is for',
+  expiry_date:'expiry', issue_date:'issued', issuer:'issued by', kept_at:'kept at',
+  doc_type:'type', trip_id:'trip', traveller_ids:'who it covers', number_last4:'number',
+  storage_path:'attached copy', notes:'notes', visa_policy:'visa requirement',
+  visa_required:'visa needed', destination:'destination', origin:'origin', archived:'archive',
+  hero_image_url:'photo', color:'colour', name:'name', kind:'kind', nationality:'nationality',
+};
+function auditValue(v){
+  if(v === null || v === undefined || v === '') return 'nothing';
+  if(v === true) return 'yes';
+  if(v === false) return 'no';
+  if(Array.isArray(v)) return v.length ? v.length + ' selected' : 'nobody';
+  const str = String(v);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return fmtDay(str);
+  if(/^\d{2}:\d{2}/.test(str)) return str.slice(0,5);
+  const t = trips.find(x=>x.id===str);
+  if(t) return t.title || 'a trip';
+  return str.length > 34 ? str.slice(0,34) + '\u2026' : str;
+}
+function auditLine(r){
+  const verb = r.action === 'insert' ? 'added' : r.action === 'delete' ? 'removed' : 'changed';
+  const what = r.table_name === 'trips' ? 'the trip'
+             : r.table_name === 'trip_travellers' ? 'a traveller'
+             : (r.label || 'something');
+  const fields = Object.entries(r.changes || {}).map(([k,v])=>{
+    const name = FIELD_LABELS[k] || k.replace(/_/g,' ');
+    if(v && v.changed) return `${name} changed`;
+    return `${name}: ${auditValue(v && v.from)} \u2192 ${auditValue(v && v.to)}`;
+  });
+  return { who: r.actor_name || 'Someone', verb, what, fields, at: r.at };
+}
+function timeAgo(iso){
+  const then = new Date(iso).getTime();
+  if(!then) return '';
+  const mins = Math.round((Date.now() - then) / 60000);
+  if(mins < 1) return 'just now';
+  if(mins < 60) return mins + 'm ago';
+  const h = Math.round(mins/60);
+  if(h < 24) return h + 'h ago';
+  const d = Math.round(h/24);
+  return d < 30 ? d + 'd ago' : Math.round(d/30) + 'mo ago';
+}
+function historyHtml(rows){
+  if(!rows.length) return `<div class="empty-state">Nothing has been changed yet.</div>`;
+  return rows.slice(0,40).map(r=>{
+    const l = auditLine(r);
+    return `<div class="hist-row">
+      <span class="hw">${escapeHtml(timeAgo(l.at))}</span>
+      <span class="hd"><b>${escapeHtml(l.who)}</b> ${l.verb} ${escapeHtml(l.what)}
+        ${l.fields.length ? `<span class="fld">${escapeHtml(l.fields.join(' \u00b7 '))}</span>` : ''}</span>
+    </div>`;
+  }).join('');
+}
+async function loadAudit(tripId){
+  auditRows = [];
+  if(!tripId) return;
+  const { data, error } = await sb.from('audit_log').select('*')
+    .eq('trip_id', tripId).order('at', { ascending:false }).limit(60);
+  if(error){ console.error(error); return; }
+  auditRows = data || [];
+}
+async function renderDocHistory(d){
+  const box = document.getElementById('dc-history');
+  if(!d){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div class="sechead" style="cursor:default;"><span class="st">History</span></div>
+    <div style="color:var(--text-faint);font-size:12.5px;">Loading\u2026</div>`;
+  const { data, error } = await sb.from('audit_log').select('*')
+    .eq('record_id', d.id).order('at', { ascending:false }).limit(20);
+  if(error){ box.style.display='none'; return; }
+  box.innerHTML = `<div class="sechead" style="cursor:default;"><span class="st">History</span></div>`
+    + historyHtml(data || []);
 }
 
 /* ============================= DOCS TAB ============================= */
@@ -1937,7 +2164,7 @@ function renderDocs(){
   let list = documents.slice();
   if(docScope === 'mine'){
     const mine = myTravellerId();
-    list = mine ? list.filter(d=>d.traveller_id === mine) : [];
+    list = mine ? list.filter(d=>docTravellerIds(d).includes(mine)) : [];
   }
   if(!list.length){
     body.innerHTML = `<div class="empty-state">${docScope==='mine'
@@ -1961,7 +2188,7 @@ function renderDocs(){
       const docs = list.filter(d=>d.doc_type === t.id).sort((a,b)=>{
         const ra = rank[docDisplayStatus(a).tone], rb = rank[docDisplayStatus(b).tone];
         if(ra !== rb) return ra - rb;
-        return travName(a.traveller_id).localeCompare(travName(b.traveller_id));
+        return docWhoLabel(a).localeCompare(docWhoLabel(b));
       });
       if(!docs.length) return '';
       return `<div class="section-label" style="margin-top:20px;">
@@ -2086,7 +2313,7 @@ function buildTripTravellers(){
 
 /* Flags travellers whose paperwork will not cover the dates in the form. */
 function paperworkGap(travId, endDate, needVisa){
-  const mine = documents.filter(d=>d.traveller_id===travId);
+  const mine = documents.filter(d=>docTravellerIds(d).includes(travId));
   const passport = mine.filter(d=>d.doc_type==='passport')
     .sort((a,b)=>(b.expiry_date||'').localeCompare(a.expiry_date||''))[0];
   if(!passport) return 'no passport recorded';
@@ -2180,6 +2407,8 @@ async function saveTrip(){
     notes: document.getElementById('tp-notes').value.trim() || null,
     hero_image_url: document.getElementById('tp-hero').value.trim() || null,
     visa_policy: tripVisaPolicy,
+    color: (trips.find(x=>x.id===editingTripId)||{}).color
+           || TRIP_COLORS[trips.length % TRIP_COLORS.length],
   };
   if(!row.title){ showToast('Give the trip a name'); return; }
   if(tripTravSel.length===0){ showToast('Pick at least one traveller'); return; }
@@ -2245,6 +2474,8 @@ function setKind(id){
   document.getElementById('it-flight-group').style.display = isFlight ? 'block' : 'none';
   document.getElementById('it-title-group').style.display  = isFlight ? 'none'  : 'block';
   document.getElementById('it-route-group').style.display = k.route ? 'block' : 'none';
+  document.getElementById('it-return-group').style.display = isFlight ? 'block' : 'none';
+  if(!isFlight) setReturnOn(false);
   document.getElementById('it-place-group').style.display = (!k.route && !k.doc) ? 'block' : 'none';
   document.getElementById('it-end-group').style.display = k.doc ? 'none' : 'block';
   document.getElementById('it-title-label').textContent = k.doc ? 'WHICH DOCUMENT' : 'NAME OR NUMBER';
@@ -2311,6 +2542,10 @@ function openItemModal(id, presetTripId){
   if(itemWho.length===0) itemWho = onTrip.slice();
   pendingFiles = [];
 
+  setReturnOn(!!it?.return_date);
+  document.getElementById('it-retdate').value = it?.return_date || '';
+  document.getElementById('it-rettime').value = fmtTime(it?.return_time) || '';
+  document.getElementById('it-retno').value = it?.return_flight_number || '';
   itemAirlineCode = it?.airline_code || '';
   itemFromCode = it?.from_code || '';
   itemToCode = it?.to_code || '';
@@ -2362,6 +2597,10 @@ async function saveItem(){
     reference: document.getElementById('it-ref').value.trim() || null,
     airline_code: isFlight ? (itemAirlineCode || null) : null,
     flight_number: isFlight ? (flightNo || null) : null,
+    return_date: (isFlight && returnOn) ? (document.getElementById('it-retdate').value || null) : null,
+    return_time: (isFlight && returnOn) ? (document.getElementById('it-rettime').value || null) : null,
+    return_flight_number: (isFlight && returnOn)
+      ? (document.getElementById('it-retno').value.trim() || null) : null,
     from_code: itemFromCode || codeFromText(document.getElementById('it-from').value) || null,
     to_code: itemToCode || codeFromText(document.getElementById('it-to').value) || null,
     status: itemStatus,
@@ -2418,6 +2657,7 @@ function setDocTypeSel(id){
   const t = docType(id);
   document.querySelectorAll('#doc-type-grid .kind-chip')
     .forEach(c=>c.classList.toggle('active', c.dataset.doc===id));
+  if(document.getElementById('dc-travellers').innerHTML) buildDocWho();
 
   document.getElementById('dc-file-group').style.display   = t.file ? 'block' : 'none';
   document.getElementById('dc-nofile-note').style.display  = t.file ? 'none' : 'block';
@@ -2476,10 +2716,7 @@ function openDocModal(id, presetTripId){
   const d = id ? documents.find(x=>x.id===id) : null;
   document.getElementById('doc-modal-title').textContent = d ? 'Edit document' : 'Add a document';
 
-  const tsel = document.getElementById('dc-traveller');
-  tsel.innerHTML = travellers.map(t=>
-    `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-  tsel.value = d ? d.traveller_id : (travellers[0]?.id || '');
+  docWho = d ? docTravellerIds(d).slice() : (travellers[0] ? [travellers[0].id] : []);
 
   const trsel = document.getElementById('dc-trip');
   trsel.innerHTML = `<option value="">The person (all trips)</option>` +
@@ -2488,13 +2725,6 @@ function openDocModal(id, presetTripId){
   trsel.value = d ? (d.trip_id || '') : (presetTripId || '');
   trsel.onchange = updateDocLevelHint;
 
-  tsel.onchange = ()=>{
-    if(editingDocId) return;
-    const t = travFor(tsel.value);
-    // staff and guests normally carry documents for one trip only
-    if(t && t.kind !== 'family' && !trsel.value && activeTripId) trsel.value = activeTripId;
-    updateDocLevelHint();
-  };
 
   document.getElementById('dc-title').value  = d?.title || '';
   document.getElementById('dc-issuer').value = d?.issuer || '';
@@ -2508,7 +2738,40 @@ function openDocModal(id, presetTripId){
   docType_   = d?.doc_type || 'visa';
   docStatus_ = d?.status || 'not_started';
   setDocTypeSel(docType_);
+  buildDocWho();
+  renderDocHistory(d);
   document.getElementById('modal-doc').classList.add('active');
+}
+
+function buildDocWho(){
+  const wrap = document.getElementById('dc-travellers');
+  const multi = docIsShareable(docType_);
+  if(!multi && docWho.length > 1) docWho = docWho.slice(0,1);
+  wrap.innerHTML = travellers.map(t=>{
+    const on = docWho.includes(t.id);
+    return `<div class="chip${on?' active':''}" onclick="toggleDocWho('${t.id}')">
+      <span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>
+      ${escapeHtml(firstName(t.name))}</div>`;
+  }).join('') + (multi && travellers.length > 1
+    ? `<div class="chip" onclick="docWho=travellers.map(t=>t.id);buildDocWho();">Everyone</div>` : '');
+  document.getElementById('dc-who-hint').textContent = multi
+    ? 'One policy can cover several people. Tick everyone it applies to.'
+    : 'Passports and visas belong to one person.';
+  if(!editingDocId && docWho.length === 1){
+    const t = travFor(docWho[0]);
+    const trsel = document.getElementById('dc-trip');
+    if(t && t.kind !== 'family' && !trsel.value && activeTripId){
+      trsel.value = activeTripId;
+      updateDocLevelHint();
+    }
+  }
+}
+function toggleDocWho(id){
+  if(docIsShareable(docType_))
+    docWho = docWho.includes(id) ? docWho.filter(x=>x!==id) : [...docWho, id];
+  else
+    docWho = [id];
+  buildDocWho();
 }
 
 function renderDocFileList(){
@@ -2544,13 +2807,13 @@ function docFileExpiry(tripId, expiry){
 
 async function saveDoc(){
   const btn = document.getElementById('dc-save');
-  const travellerId = document.getElementById('dc-traveller').value;
   const tripId = document.getElementById('dc-trip').value || null;
   const t = docType(docType_);
-  if(!travellerId){ showToast('Pick whose document this is'); return; }
+  if(!docWho.length){ showToast('Pick whose document this is'); return; }
 
   const row = {
-    traveller_id: travellerId,
+    traveller_ids: docWho,
+    traveller_id: docWho[0],
     trip_id: t.person ? null : tripId,
     doc_type: docType_,
     title: document.getElementById('dc-title').value.trim() || t.label,
@@ -2684,8 +2947,10 @@ function expiredStaffDocs(){
   const today = todayISO();
   return documents.filter(d=>{
     if(!d.trip_id) return false;
-    const tr = travFor(d.traveller_id);
-    if(!tr || tr.kind === 'family') return false;
+    const ids = docTravellerIds(d);
+    if(!ids.length) return false;
+    // only sweep when it covers nobody in the family
+    if(ids.some(id=>{ const t = travFor(id); return !t || t.kind === 'family'; })) return false;
     const t = trips.find(x=>x.id === d.trip_id);
     if(!t || !t.end_date) return false;
     return addDays(t.end_date, 30) < today;
@@ -2710,7 +2975,7 @@ async function sweepExpiredFiles(interactive){
       lines.push(`${docs.length+atts.length} stored ${docs.length+atts.length===1?'copy':'copies'} past their keep-until date (details stay).`);
     if(staff.length)
       lines.push(`${staff.length} staff or guest ${staff.length===1?'document':'documents'} from finished trips, removed completely:\n  ` +
-        staff.map(d=>`\u2022 ${travName(d.traveller_id)} \u2014 ${d.title||''}`).join('\n  '));
+        staff.map(d=>`\u2022 ${docWhoLabel(d)} \u2014 ${d.title||''}`).join('\n  '));
     if(!confirm(lines.join('\n\n') + '\n\nGo ahead?')) return 0;
   }
 
@@ -2765,7 +3030,8 @@ function icsStamp(date, time){
 function exportTripIcs(tripId){
   const trip = trips.find(t=>t.id===tripId);
   if(!trip) return;
-  const list = tripItems(tripId).filter(i=>i.start_date && i.status!=='cancelled').sort(itemSort);
+  const list = expandedItems(tripItems(tripId))
+    .filter(i=>i.start_date && i.status!=='cancelled').sort(itemSort);
   if(!list.length){ showToast('Nothing with a date to export yet'); return; }
 
   const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Al-Hugail Travels//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
@@ -2777,7 +3043,7 @@ function exportTripIcs(tripId){
     const endTime = i.end_time || i.start_time;
 
     L.push('BEGIN:VEVENT');
-    L.push('UID:' + i.id + '@alhugail-travels');
+    L.push('UID:' + i.id + '-' + (i._leg||'out') + '@alhugail-travels');
     L.push('DTSTAMP:' + new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z');
     if(timed){
       L.push('DTSTART:' + icsStamp(i.start_date, i.start_time));
@@ -2818,9 +3084,11 @@ function flightStatusUrl(i){
   const when = i.start_date ? ' ' + i.start_date : '';
   return 'https://www.google.com/search?q=' + encodeURIComponent(`${code}${num} flight status${when}`);
 }
-function openFlightStatus(id){
-  const i = items.find(x=>x.id===id);
-  const url = i && flightStatusUrl(i);
+function openFlightStatus(id, leg){
+  const base = items.find(x=>x.id===id);
+  if(!base) return;
+  const i = legsOf(base).find(x=>x._leg === (leg||'out')) || base;
+  const url = flightStatusUrl(i);
   if(url) window.open(url, '_blank', 'noopener');
 }
 
@@ -3050,6 +3318,23 @@ async function paintHero(trip){
     <div class="cap">${escapeHtml(trip.destination || trip.title || '')}</div>
   </div>`;
 }
+
+let returnOn = false;
+function setReturnOn(on){
+  returnOn = !!on;
+  const btn = document.getElementById('it-return-toggle');
+  btn.className = 'status-btn' + (returnOn ? ' on-ok' : '');
+  btn.textContent = returnOn ? 'Round trip \u2713' : 'Add a return leg';
+  document.getElementById('it-return-fields').style.display = returnOn ? 'block' : 'none';
+  if(returnOn){
+    const from = document.getElementById('it-from').value;
+    const to = document.getElementById('it-to').value;
+    document.getElementById('it-return-hint').textContent =
+      (from && to) ? `Returning ${to} \u2192 ${from}. It appears on its own date in the schedule.`
+                   : 'The return appears on its own date in the schedule.';
+  }
+}
+function toggleReturn(){ setReturnOn(!returnOn); }
 
 function codeFromText(v){
   const m = /\(([A-Za-z0-9]{3})\)\s*$/.exec(String(v||''));
