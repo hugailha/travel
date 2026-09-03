@@ -28,22 +28,28 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 <style>
   :root{
     --bg:#ffffff;
-    --surface:#f7f6f2;
-    --surface-2:#edebe4;
-    --line:rgba(20,20,26,0.10);
-    --line-strong:rgba(20,20,26,0.20);
-    --gold:#b8863f;
-    --gold-soft:rgba(184,134,63,0.13);
-    --teal:#2f7a6b;
-    --teal-soft:rgba(47,122,107,0.13);
-    --coral:#b84a34;
-    --coral-soft:rgba(184,74,52,0.14);
-    --blue:#4c6fa0;
-    --blue-soft:rgba(76,111,160,0.13);
-    --ink:#1a1a1a;
-    --text:#181b22;
-    --text-muted:#6b7280;
-    --text-faint:#9aa1ad;
+    --surface:#f8f7f4;
+    --surface-2:#eceae4;
+    --line:rgba(18,20,27,0.11);
+    --line-strong:rgba(18,20,27,0.24);
+
+    /* saturated enough to actually register against white */
+    --gold:#e08b16;
+    --gold-ink:#a25f06;
+    --gold-soft:rgba(224,139,22,0.14);
+    --teal:#0d8f70;
+    --teal-ink:#0a6b54;
+    --teal-soft:rgba(13,143,112,0.14);
+    --coral:#dc4436;
+    --coral-soft:rgba(220,68,54,0.14);
+    --blue:#2668e8;
+    --blue-soft:rgba(38,104,232,0.13);
+    --violet:#7a45d6;
+
+    --ink:#12141b;
+    --text:#12141b;
+    --text-muted:#565e6d;
+    --text-faint:#858d9c;
     --radius:18px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -144,7 +150,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   /* countdown dial */
   .dial-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px 20px 20px;text-align:center;margin-bottom:18px;}
   .dial-trip-line{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:700;letter-spacing:0.05em;color:#262b36;margin-bottom:14px;}
-  .dial-trip-line .amt{color:#9c6a1f;}
+  .dial-trip-line .amt{color:var(--gold-ink);}
   .dial-wrap{position:relative;width:186px;height:186px;margin:0 auto 6px;}
   .dial-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
   .dial-center .big{font-family:'Fraunces',serif;font-size:44px;font-weight:600;line-height:1;}
@@ -163,8 +169,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
   /* section labels */
   .section-label{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px;}
-  .section-label .eyebrow{font-size:11px;color:#4a5160;font-weight:600;}
-  .section-label a{font-size:12px;color:#9c6a1f;font-weight:700;text-decoration:none;font-family:'IBM Plex Mono',monospace;letter-spacing:0.02em;cursor:pointer;}
+  .section-label .eyebrow{font-size:11px;color:var(--text-muted);font-weight:600;}
+  .section-label a{font-size:12px;color:var(--gold-ink);font-weight:700;text-decoration:none;font-family:'IBM Plex Mono',monospace;letter-spacing:0.02em;cursor:pointer;}
   .section-label a:active{color:#7a5218;}
 
   /* itinerary list */
@@ -178,8 +184,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .ledger-mid .cat .ic{font-size:13px;}
   .ledger-mid .meta{font-size:11.5px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ledger-mid .meta .who-tag{color:var(--text-faint);}
-  .ledger-amt{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;flex-shrink:0;}
-  .ledger-amt .fx{display:block;font-size:10.5px;color:var(--text-faint);margin-top:2px;font-weight:400;}
+  .ledger-amt{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:14px;
+    font-weight:600;flex-shrink:0;color:var(--text);}
+  .ledger-amt .fx{display:block;font-size:14px;color:var(--text);margin-top:3px;font-weight:600;}
   .day-head{
     display:flex;align-items:baseline;gap:10px;padding:11px 16px 9px;
     background:var(--surface-2);border-bottom:1px solid var(--line);
@@ -215,7 +222,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border:1px solid;white-space:nowrap;
   }
   .stamp.ok{color:var(--teal);border-color:var(--teal);background:var(--teal-soft);}
-  .stamp.warn{color:#9c6a1f;border-color:var(--gold);background:var(--gold-soft);}
+  .stamp.warn{color:var(--gold-ink);border-color:var(--gold);background:var(--gold-soft);}
   .stamp.bad{color:var(--coral);border-color:var(--coral);background:var(--coral-soft);}
   .stamp.idle{color:var(--text-faint);border-color:var(--line-strong);border-style:dashed;background:transparent;}
 
@@ -240,7 +247,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .chip-row::-webkit-scrollbar{display:none;}
   .chip{
     flex-shrink:0;display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:20px;
-    background:var(--surface);border:1px solid var(--line);font-size:12.5px;color:#4a5160;
+    background:var(--surface);border:1px solid var(--line);font-size:12.5px;color:var(--text-muted);
     font-weight:600;white-space:nowrap;
   }
   .chip .dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
@@ -266,7 +273,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .status-row{display:flex;gap:8px;flex-wrap:wrap;}
   .status-btn{flex:1;min-width:78px;text-align:center;padding:11px 4px;border-radius:13px;background:var(--surface);border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--text-muted);}
   .status-btn.on-ok{background:var(--teal-soft);border-color:var(--teal);color:var(--teal);}
-  .status-btn.on-warn{background:var(--gold-soft);border-color:var(--gold);color:#9c6a1f;}
+  .status-btn.on-warn{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-ink);}
   .status-btn.on-bad{background:var(--coral-soft);border-color:var(--coral);color:var(--coral);}
   .status-btn.on-idle{background:var(--surface-2);border-color:var(--line-strong);color:var(--text);}
   .save-btn{
@@ -289,7 +296,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .navbar-inner{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:6px;max-width:440px;width:100%;}
   .nav-btn{
     flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-    padding:9px 4px;border-radius:15px;color:#5c6270;background:none;border:none;
+    padding:9px 4px;border-radius:15px;color:var(--text-muted);background:none;border:none;
     font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;
   }
   .nav-btn .ic{font-size:17px;}
@@ -328,8 +335,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     background:linear-gradient(to top, rgba(12,14,18,0.75), transparent);color:#fff;
     font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;}
   .trav-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
-  .trav-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);
-    border-radius:20px;padding:4px 11px 4px 4px;font-size:12px;color:var(--text);}
+  .trav-pill{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:500;color:var(--text);}
   .trav-pill .dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;font-size:9px;font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
   .trav-pill .tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-faint);letter-spacing:0.06em;}
@@ -337,30 +344,32 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:10px 12px;margin-bottom:7px;font-size:13px;}
   .attach-row .an{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .attach-row .ax{color:var(--coral);font-size:16px;padding:0 4px;cursor:pointer;}
-  .attach-row.pending .an{color:#9c6a1f;}
+  .attach-row.pending .an{color:var(--gold-ink);}
   .attach-add{display:block;text-align:center;border:1px dashed var(--line-strong);
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
   /* add controls that look pressable */
   .addbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gold);
-    background:var(--gold-soft);color:#8a6320;border-radius:20px;padding:6px 13px;
+    background:var(--gold-soft);color:var(--gold-ink);border-radius:20px;padding:6px 13px;
     font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:0;
     text-transform:none;cursor:pointer;}
   .addbtn:active{background:var(--surface-2);}
   .addbtn .pl{font-size:15px;line-height:1;margin-top:-1px;}
 
   /* schedule row labels */
-  .ledger-amt .lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-faint);
-    letter-spacing:0.1em;margin-right:5px;text-transform:uppercase;}
-  .ledger-amt .fx.strong{color:var(--text);font-weight:500;font-size:13px;}
+  .ledger-amt .lbl{font-family:'Inter',sans-serif;font-size:10px;color:var(--text-muted);
+    letter-spacing:0.04em;margin-right:6px;text-transform:uppercase;font-weight:700;}
+  .ledger-amt .fx.strong{color:var(--text);font-weight:600;font-size:14px;}
   .ledger-amt .nights{display:block;font-family:'Inter',sans-serif;font-size:10.5px;
     color:var(--text-faint);margin-top:3px;font-weight:400;}
   .ledger-mid .carrier{color:var(--text-muted);font-weight:400;}
-  .who-dots{display:inline-flex;gap:3px;vertical-align:middle;margin-left:2px;}
-  .who-dots span{width:15px;height:15px;border-radius:50%;display:inline-flex;
-    align-items:center;justify-content:center;font-size:7.5px;font-weight:700;
-    font-family:'IBM Plex Mono',monospace;color:#fff;}
+  .who-dots{display:inline-flex;flex-wrap:wrap;gap:8px;vertical-align:middle;}
+  .who-chip{display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);
+    font-size:11.5px;white-space:nowrap;}
+  .who-chip i{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .who-chip.guest i{background:transparent !important;box-shadow:inset 0 0 0 2px currentColor;}
+  .who-chip.guest{font-style:italic;}
   .info-note{font-size:12.5px;line-height:1.55;color:var(--text-muted);background:var(--surface-2);
     border-radius:12px;padding:11px 13px;margin-bottom:12px;}
 
@@ -370,13 +379,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .sechead .cv{color:var(--text-faint);font-size:12px;transition:transform .18s;display:inline-block;}
   .sechead.open .cv{transform:rotate(90deg);}
   .sechead .st{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;
-    text-transform:uppercase;color:#4a5160;font-weight:600;}
+    text-transform:uppercase;color:var(--text-muted);font-weight:600;}
   .sechead .ss{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
     color:var(--text-faint);letter-spacing:0.03em;}
-  .sechead .ss.warn{color:#9c6a1f;}
+  .sechead .ss.warn{color:var(--gold-ink);}
   .sechead .ss.bad{color:var(--coral);}
   .sechead .adder{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;
-    font-weight:700;color:#9c6a1f;letter-spacing:0.03em;}
+    font-weight:700;color:var(--gold-ink);letter-spacing:0.03em;}
 
   /* colour band on trip cards */
   .trip-card{position:relative;padding-left:22px;}
@@ -427,21 +436,21 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .alert-list{margin-bottom:14px;}
   .alert{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:13px;
     margin-bottom:7px;font-size:13px;line-height:1.45;cursor:pointer;
-    border:1px solid var(--gold);background:var(--gold-soft);color:#5f4512;}
-  .alert.bad{border-color:var(--coral);background:var(--coral-soft);color:#7d2f1e;}
+    border:1px solid var(--gold);background:var(--gold-soft);color:var(--gold-ink);}
+  .alert.bad{border-color:var(--coral);background:var(--coral-soft);color:#a3271a;}
   .alert .ago{margin-left:auto;color:inherit;opacity:0.55;font-size:15px;}
   .addbar{display:block;width:100%;text-align:center;border:1px dashed var(--line-strong);
     border-radius:14px;padding:13px;font-size:13.5px;font-weight:600;color:var(--text-muted);
     background:none;margin:12px 0 4px;}
   .addbar:active{background:var(--surface-2);}
-  .warnline{font-size:12px;line-height:1.5;color:#7d2f1e;background:var(--coral-soft);
+  .warnline{font-size:12px;line-height:1.5;color:#a3271a;background:var(--coral-soft);
     border:1px solid var(--coral);border-radius:11px;padding:9px 11px;margin-top:9px;}
 
   /* segmented tabs */
   .segbar{display:flex;gap:4px;background:var(--surface-2);border-radius:14px;padding:4px;margin:2px 0 16px;}
   .segbar button{flex:1;border:none;background:none;border-radius:11px;padding:9px 6px;
     font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.08em;
-    text-transform:uppercase;color:#5c6270;}
+    text-transform:uppercase;color:var(--text-muted);}
   .segbar button.on{background:var(--bg);color:var(--text);box-shadow:0 1px 2px rgba(20,20,26,0.07);}
 
   /* readiness panel */
@@ -485,11 +494,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
   /* trip banner */
   .banner{border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:13px;line-height:1.55;
-    border:1px solid var(--gold);background:var(--gold-soft);color:#5f4512;}
-  .banner.bad{border-color:var(--coral);background:var(--coral-soft);color:#7d2f1e;}
+    border:1px solid var(--gold);background:var(--gold-soft);color:var(--gold-ink);}
+  .banner.bad{border-color:var(--coral);background:var(--coral-soft);color:#a3271a;}
   .banner strong{font-weight:700;}
 
-  .linkbtn{background:none;border:none;color:#9c6a1f;font-family:'IBM Plex Mono',monospace;
+  .linkbtn{background:none;border:none;color:var(--gold-ink);font-family:'IBM Plex Mono',monospace;
     font-size:11px;font-weight:700;letter-spacing:0.04em;padding:4px 0;cursor:pointer;}
 
   .auth-choice{display:flex;flex-direction:column;gap:10px;margin-top:24px;width:100%;max-width:280px;}
@@ -978,33 +987,33 @@ const CONFIGURED = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(SUPABASE_URL) 
 const sb = CONFIGURED ? supabase.createClient(SUPABASE_URL.replace(/\/$/,''), SUPABASE_ANON_KEY) : null;
 
 const FAMILY = [
-  {username:'hesham', name:'Hesham Alhugail', role:'head', color:'#b8863f'},
-  {username:'rose', name:'Rose Alawdah', role:'member', color:'#2f7a6b'},
-  {username:'najla', name:'Najla Alhugail', role:'member', color:'#b84a34'},
-  {username:'aljoharah', name:'Aljoharah Alhugail', role:'member', color:'#4c6fa0'},
-  {username:'saba', name:'Saba Alhugail', role:'member', color:'#6b5b95'},
-  {username:'abdullah', name:'Abdullah Alhugail', role:'member', color:'#7a8a4f'},
-  {username:'secretary', name:'Family Secretary', role:'secretary', color:'#5b6b7a'},
+  {username:'hesham', name:'Hesham Alhugail', role:'head', color:'#e08b16'},
+  {username:'rose', name:'Rose Alawdah', role:'head', color:'#0d8f70'},
+  {username:'najla', name:'Najla Alhugail', role:'member', color:'#dc4436'},
+  {username:'aljoharah', name:'Aljoharah Alhugail', role:'member', color:'#2668e8'},
+  {username:'saba', name:'Saba Alhugail', role:'member', color:'#7a45d6'},
+  {username:'abdullah', name:'Abdullah Alhugail', role:'member', color:'#5b9e2f'},
+  {username:'secretary', name:'Family Secretary', role:'secretary', color:'#0e9bb5'},
 ];
 
 const KINDS = [
-  {id:'flight',   label:'Flight',   ic:'\u2708\uFE0F', color:'#4c6fa0', route:true},
-  {id:'train',    label:'Train',    ic:'\uD83D\uDE84', color:'#2f7a6b', route:true},
-  {id:'car',      label:'Transfer', ic:'\uD83D\uDE97', color:'#6b7280', route:true},
-  {id:'hotel',    label:'Hotel',    ic:'\uD83C\uDFE8', color:'#b8863f', route:false},
-  {id:'activity', label:'Activity', ic:'\uD83C\uDFAB', color:'#8a5fa8', route:false},
-  {id:'dining',   label:'Dining',   ic:'\uD83C\uDF7D\uFE0F', color:'#b84a34', route:false},
+  {id:'flight',   label:'Flight',   ic:'\u2708\uFE0F', color:'#2668e8', route:true},
+  {id:'train',    label:'Train',    ic:'\uD83D\uDE84', color:'#0d8f70', route:true},
+  {id:'car',      label:'Transfer', ic:'\uD83D\uDE97', color:'#565e6d', route:true},
+  {id:'hotel',    label:'Hotel',    ic:'\uD83C\uDFE8', color:'#e08b16', route:false},
+  {id:'activity', label:'Activity', ic:'\uD83C\uDFAB', color:'#7a45d6', route:false},
+  {id:'dining',   label:'Dining',   ic:'\uD83C\uDF7D\uFE0F', color:'#dc4436', route:false},
 ];
 
 /* Documents live in their own table. Passports and ID cards are metadata
    only - the database refuses to store a scan against them. */
 const DOC_TYPES = [
-  {id:'passport',  label:'Passport',  ic:'\uD83D\uDCD4', color:'#4c6fa0', file:false, person:true},
-  {id:'visa',      label:'Visa',      ic:'\uD83D\uDEC2', color:'#a68f2e', file:true},
-  {id:'insurance', label:'Insurance', ic:'\uD83D\uDEE1\uFE0F', color:'#2f7a6b', file:true},
-  {id:'ticket',    label:'Ticket',    ic:'\uD83C\uDFAB', color:'#b8863f', file:true},
-  {id:'id',        label:'ID card',   ic:'\uD83E\uDEAA', color:'#6b5b95', file:false, person:true},
-  {id:'other',     label:'Other',     ic:'\uD83D\uDCC4', color:'#6b7280', file:true},
+  {id:'passport',  label:'Passport',  ic:'\uD83D\uDCD4', color:'#2668e8', file:false, person:true},
+  {id:'visa',      label:'Visa',      ic:'\uD83D\uDEC2', color:'#e08b16', file:true},
+  {id:'insurance', label:'Insurance', ic:'\uD83D\uDEE1\uFE0F', color:'#0d8f70', file:true},
+  {id:'ticket',    label:'Ticket',    ic:'\uD83C\uDFAB', color:'#7a45d6', file:true},
+  {id:'id',        label:'ID card',   ic:'\uD83E\uDEAA', color:'#565e6d', file:false, person:true},
+  {id:'other',     label:'Other',     ic:'\uD83D\uDCC4', color:'#858d9c', file:true},
 ];
 function docType(id){ return DOC_TYPES.find(d=>d.id===id) || DOC_TYPES[1]; }
 
@@ -1051,7 +1060,7 @@ let docWho = [];
 let auditRows = [];
 let sectionOpen = { schedule:true, paperwork:null, documents:null, history:false };
 
-const TRIP_COLORS = ['#b8863f','#2f7a6b','#4c6fa0','#b84a34','#6b5b95','#7a8a4f','#a68f2e','#5b6b7a'];
+const TRIP_COLORS = ['#e08b16','#0d8f70','#2668e8','#dc4436','#7a45d6','#5b9e2f','#e0640f','#0e9bb5'];
 function tripColor(t){
   if(t && t.color) return t.color;
   const key = String(t && t.id || '');
@@ -1861,13 +1870,11 @@ function renderTrip(){
     <div class="th-dates">${fmtRange(trip.start_date, trip.end_date)}${(days!==null&&days>=0)?` &middot; ${escapeHtml(countdownLabel(days).toUpperCase())}`:''}</div>
     ${trip.notes ? `<div class="th-notes">${escapeHtml(trip.notes)}</div>` : ''}
     ${(()=>{ const on = travellersOn(trip.id); return on.length ? `<div class="trav-strip">${on.map(t=>`
-      <span class="trav-pill"><span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}</span>`).join('')}</div>` : ''; })()}`;
+      <span class="trav-pill" title="${escapeHtml(t.name)}"><span class="dot" style="background:${t.color||'#858d9c'};width:9px;height:9px;"></span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}</span>`).join('')}</div>` : ''; })()}`;
 
   filter.innerHTML = `
     <div class="chip ${tripFilterMine?'':'active'}" onclick="setTripFilter(false)">Everyone</div>
-    <div class="chip ${tripFilterMine?'active':''}" onclick="setTripFilter(true)">
-      <span class="dot" style="background:${currentUser.color||'#b8863f'}">${initials(currentUser.name)}</span>Just mine
-    </div>`;
+    <div class="chip ${tripFilterMine?'active':''}" onclick="setTripFilter(true)">Just mine</div>`;
 
   // ---- gather ----
   let list = tripItems(trip.id);
@@ -2041,16 +2048,20 @@ function carrierOf(it){
   const code = it._leg === 'ret' ? (it.return_airline_code || it.airline_code) : it.airline_code;
   return airlineName(code);
 }
+/* Names, never initials. "AH" could be Ahmed the driver or Aljoharah. */
 function whoDots(it){
   const ids = (it.member_ids && it.member_ids.length)
     ? it.member_ids
     : travellersOn(it.trip_id).map(t=>t.id);
   if(!ids.length) return '';
-  if(ids.length <= 2)
-    return ids.map(id=>escapeHtml(firstName(travName(id)))).join(' & ');
-  return `<span class="who-dots">${ids.map(id=>
-    `<span style="background:${travColor(id)}" title="${escapeHtml(travName(id))}">${initials(travName(id))}</span>`
-  ).join('')}</span>`;
+  return `<span class="who-dots">${ids.map(id=>{
+    const t = travFor(id);
+    const guest = t && t.kind && t.kind !== 'family';
+    return `<span class="who-chip${guest ? ' guest' : ''}"
+       style="${guest ? `color:${travColor(id)}` : ''}"
+       title="${escapeHtml(travName(id))}${guest ? ' \u2014 ' + escapeHtml(t.kind) : ''}">
+      <i style="background:${travColor(id)}"></i>${escapeHtml(firstName(travName(id)))}</span>`;
+  }).join('')}</span>`;
 }
 function nightsBetween(a,b){
   const x = d0(a), y = d0(b);
@@ -2070,7 +2081,7 @@ function itemRowHtml(it){
   if(it.reference) bits.push(escapeHtml(it.reference));
   bits.push(whoDots(it));
   if(it.status !== 'confirmed')
-    bits.push(`<span style="color:${st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'#9c6a1f'}">${st.label}</span>`);
+    bits.push(`<span style="color:${st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'var(--gold-ink)'}">${st.label}</span>`);
 
   // times, labelled so departure and arrival are not read as equals
   let amt;
@@ -2088,7 +2099,7 @@ function itemRowHtml(it){
       ${fmtTime(it.end_time) ? `<span class="fx">${fmtTime(it.end_time)}</span>` : ''}`;
   }
 
-  return `<div class="ledger-row" style="background:${tint(k.color, 0.05)}"
+  return `<div class="ledger-row" style="background:${tint(k.color, 0.07)}"
        onclick="openItemModal('${it.id}')">
     <div class="cat-dot" style="background:${k.color}"></div>
     <div class="ledger-mid">
@@ -2332,7 +2343,7 @@ function renderSettings(){
         <span>${escapeHtml(l.label)}</span>
         <span style="display:flex;align-items:center;gap:12px;">
           <span class="sub">${escapeHtml((l.kind||'').toUpperCase())}</span>
-          <span style="color:#9c6a1f;cursor:pointer;font-size:12px;"
+          <span style="color:var(--gold-ink);cursor:pointer;font-size:12px;"
                 onclick="renameLookup('${l.id}')">rename</span>
           <span style="color:var(--coral);cursor:pointer;font-size:15px;"
                 onclick="deleteLookup('${l.id}')">&times;</span>
@@ -2527,7 +2538,7 @@ async function addTravellerInline(){
   buildTripTravellers();
 }
 
-const TRAV_COLORS = ['#b8863f','#2f7a6b','#b84a34','#4c6fa0','#6b5b95','#7a8a4f','#a68f2e','#5b6b7a'];
+const TRAV_COLORS = ['#e08b16','#0d8f70','#dc4436','#2668e8','#7a45d6','#5b9e2f','#e0640f','#0e9bb5'];
 async function createTraveller(name, kind, nationality){
   const color = TRAV_COLORS[travellers.length % TRAV_COLORS.length];
   const { data, error } = await sb.from('travellers')
@@ -2948,7 +2959,7 @@ function renderDocFileList(){
     html += `<div class="attach-row pending">
       <span>\u21E1</span>
       <span class="an">${escapeHtml(pendingDocFile.name)}</span>
-      <span style="color:#9c6a1f;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
+      <span style="color:var(--gold-ink);font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
       <span class="ax" onclick="pendingDocFile=null;renderDocFileList();">&times;</span>
     </div>`;
   }
@@ -3416,7 +3427,7 @@ function renderAttachList(){
     <div class="attach-row pending">
       <span>\u21E1</span>
       <span class="an">${escapeHtml(f.name)}</span>
-      <span style="color:#9c6a1f;font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
+      <span style="color:var(--gold-ink);font-size:10.5px;font-family:'IBM Plex Mono',monospace;">ON SAVE</span>
       <span class="ax" onclick="dropPending(${i})">&times;</span>
     </div>`).join('');
   wrap.innerHTML = html;
