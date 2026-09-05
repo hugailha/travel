@@ -362,6 +362,29 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* read-only detail */
+  .dhead{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px;}
+  .dhead .dt{flex:1;min-width:0;}
+  .dhead .dt h4{font-family:'Fraunces','Iowan Old Style','Palatino Linotype',Georgia,serif;
+    font-size:20px;font-weight:600;margin:0;line-height:1.25;}
+  .dhead .dt .dsub{font-size:13px;color:var(--text-muted);margin-top:3px;}
+  .drow{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .drow:last-child{border-bottom:none;}
+  .drow .dk{width:104px;flex-shrink:0;color:var(--text-muted);font-size:12.5px;font-weight:600;
+    padding-top:1px;}
+  .drow .dv{flex:1;min-width:0;color:var(--text);line-height:1.45;}
+  .drow .dv .when{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:600;}
+  .drow .dv small{display:block;color:var(--text-muted);font-size:12px;margin-top:2px;}
+  .dleg{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;
+    background:var(--surface);}
+  .dleg .ln{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.1em;
+    color:var(--text-muted);font-weight:700;margin-bottom:8px;}
+  .dtransit{display:flex;align-items:center;gap:9px;margin:0 0 10px 12px;font-size:13px;
+    font-weight:600;color:var(--text);}
+  .dtransit.tight{color:var(--coral);}
+  .dtransit .bar{flex:0 0 3px;height:18px;border-radius:2px;background:var(--line-strong);}
+  .dtransit.tight .bar{background:var(--coral);}
+
   /* connecting journeys */
   .leg-tag.stops{background:var(--blue-soft);color:#1c4fb0;cursor:pointer;font-weight:700;}
   .segs{border-top:1px dashed var(--line-strong);margin:10px 0 2px;padding-top:10px;}
@@ -375,6 +398,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .layover .bar{flex:0 0 3px;height:16px;border-radius:2px;background:var(--line-strong);}
   .layover.tight{color:var(--coral);}
   .layover.tight .bar{background:var(--coral);}
+  .layover span:not(.bar):not(.flag){font-weight:600;}
   .tlabel{font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;font-size:9.5px;
     font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);
     margin-right:2px;}
@@ -534,7 +558,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
   .viewer{position:fixed;inset:0;z-index:80;background:rgba(16,18,22,0.94);display:none;
     flex-direction:column;}
   .viewer.on{display:flex;}
-  .viewer-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff;flex-shrink:0;}
+  .viewer-bar{display:flex;align-items:center;gap:12px;color:#fff;flex-shrink:0;
+    padding:calc(14px + env(safe-area-inset-top)) 16px 14px;}
+  .viewer-body{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+  .viewer-bar button{min-height:40px;}
   .viewer-bar .vt{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .viewer-bar button{background:rgba(255,255,255,0.14);border:none;color:#fff;border-radius:9px;
     padding:7px 13px;font-size:13px;font-weight:600;}
@@ -1030,6 +1057,15 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     </p>
     <div id="archive-list"></div>
     <div class="modal-close" onclick="closeModal('modal-archive')">Close</div>
+  </div>
+</div>
+
+<!-- READ-ONLY DETAIL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal-sheet">
+    <div id="detail-body"></div>
+    <button class="save-btn" id="detail-edit" style="display:none;">Edit</button>
+    <div class="modal-close" onclick="closeModal('modal-detail')">Close</div>
   </div>
 </div>
 
@@ -2255,7 +2291,7 @@ function itemRowHtml(it){
   }
 
   return `<div class="ledger-row" style="background:${tint(k.color, 0.10)}"
-       onclick="openItemModal('${it.id}')">
+       onclick="openItemDetail('${it.id}','${it._leg||'out'}')">
     <div class="cat-dot" style="background:${k.color}"></div>
     <div class="ledger-mid">
       <div class="cat"><span class="ic">${k.ic}</span>${
@@ -2397,7 +2433,7 @@ function docCardHtml(d, hideTrip){
   if(d.number_last4) meta.push('\u2022\u2022\u2022\u2022 ' + escapeHtml(d.number_last4));
   if(d.kept_at)     meta.push(escapeHtml(d.kept_at));
 
-  return `<div class="doc-card" onclick="openDocModal('${d.id}')">
+  return `<div class="doc-card" onclick="openDocDetail('${d.id}')">
     <div class="doc-top">
       <span style="font-size:17px;">${t.ic}</span>
       <span class="dt-name">${escapeHtml(docWhoLabel(d))} \u2014 ${escapeHtml(d.title || t.label)}</span>
@@ -3398,6 +3434,141 @@ function refreshCurrentScreen(){
   else if(activeTab==='docs') renderDocs();
   else if(activeTab==='settings') renderSettings();
   else renderHome();
+}
+
+/* ============================= READ-ONLY DETAIL ============================= */
+/* Tapping something shows what it is. Editing is a deliberate second step,
+   and only for the people allowed to do it. */
+function dRow(k, v){
+  return v ? `<div class="drow"><span class="dk">${escapeHtml(k)}</span>
+    <span class="dv">${v}</span></div>` : '';
+}
+function fmtLongDate(iso){
+  const d = d0(iso);
+  return d ? `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}` : '';
+}
+function whenCell(date, time, place){
+  return `<span class="when">${escapeHtml(fmtLongDate(date))}${time ? '  ' + fmtTime(time) : ''}</span>${
+    place ? `<small>${escapeHtml(place)}</small>` : ''}`;
+}
+function segBlockHtml(sg, i){
+  const dur = minutesBetween(sg.dep_date, sg.dep_time, sg.arr_date, sg.arr_time);
+  return `<div class="dleg">
+    <div class="ln">LEG ${i+1} \u00b7 ${escapeHtml([airlineName(sg.airline_code), sg.flight_number].filter(Boolean).join(' ') || 'Flight')}</div>
+    ${dRow('Departure', whenCell(sg.dep_date, sg.dep_time, sg.from_place || sg.from_code))}
+    ${dRow('Arrival',   whenCell(sg.arr_date || sg.dep_date, sg.arr_time, sg.to_place || sg.to_code))}
+    ${dRow('Duration',  dur ? escapeHtml(fmtDuration(dur)) : '')}
+  </div>`;
+}
+
+function openItemDetail(id, leg){
+  const base = items.find(x=>x.id===id);
+  if(!base) return;
+  const it = legsOf(base).find(x=>x._leg === (leg||'out')) || base;
+  const k = kindInfo(it.kind);
+  const segs = segsFor(id, leg || 'out');
+  const st = statusInfo(it.kind, it.status);
+  const carrier = carrierOf(it);
+  const trip = trips.find(t=>t.id===it.trip_id);
+  const who = (it.member_ids && it.member_ids.length)
+    ? it.member_ids : travellersOn(it.trip_id).map(t=>t.id);
+
+  let body = `<div class="dhead">
+    <span style="font-size:22px;">${k.ic}</span>
+    <div class="dt">
+      <h4>${escapeHtml([carrier, legTitle(it)].filter(Boolean).join(' '))}</h4>
+      <div class="dsub">${escapeHtml(trip ? trip.title : '')}${it._leg==='ret' ? ' \u00b7 return leg' : ''}</div>
+    </div>
+  </div>`;
+
+  if(segs.length > 1){
+    segs.forEach((sg, i)=>{
+      body += segBlockHtml(sg, i);
+      const next = segs[i+1];
+      if(next){
+        const lo = layoverInfo(sg, next);
+        body += `<div class="dtransit ${lo.tight || lo.changeAirport ? 'tight' : ''}">
+          <span class="bar"></span>
+          <span>Transit time ${escapeHtml(fmtDuration(lo.mins))} in ${escapeHtml(sg.to_place || sg.to_code || 'transit')}</span>
+          ${lo.tight ? '<span class="flag">TIGHT</span>' : ''}
+          ${lo.changeAirport ? `<span class="flag">CHANGE TO ${escapeHtml(next.from_code || '?')}</span>` : ''}
+        </div>`;
+      }
+    });
+    const total = minutesBetween(segs[0].dep_date, segs[0].dep_time,
+                                 segs[segs.length-1].arr_date, segs[segs.length-1].arr_time);
+    body += dRow('Journey', escapeHtml(fmtDuration(total)) + ' in total, ' +
+                            (segs.length-1) + ' stop' + (segs.length > 2 ? 's' : ''));
+  } else if(it.kind === 'hotel'){
+    const nights = nightsBetween(it.start_date, it.end_date);
+    body += dRow('Check in',  whenCell(it.start_date, it.start_time, it.place));
+    body += dRow('Check out', whenCell(it.end_date, it.end_time, ''));
+    body += dRow('Nights', nights ? nights : '');
+  } else {
+    const dur = minutesBetween(it.start_date, it.start_time,
+                               it.end_date || it.start_date, it.end_time);
+    body += dRow('Departure', whenCell(it.start_date, it.start_time, it.from_place || it.place));
+    if(it.end_time || it.to_place)
+      body += dRow('Arrival', whenCell(it.end_date || it.start_date, it.end_time, it.to_place));
+    body += dRow('Duration', dur ? escapeHtml(fmtDuration(dur)) + ' (non stop)' : '');
+  }
+
+  body += dRow('Booking status', `<span style="color:${
+    st.tone==='ok'?'var(--teal)':st.tone==='bad'?'var(--coral)':'var(--gold-ink)'};font-weight:600;">${st.label}</span>`);
+  if(it.cabin){
+    const c = cabinInfo(it.cabin);
+    body += dRow('Class', `<span style="color:${c?c.color:'inherit'};font-weight:600;">${escapeHtml(cabinLabel(it.cabin))}</span>`);
+  }
+  body += dRow('Reference', it.reference ? `<span class="when">${escapeHtml(it.reference)}</span>` : '');
+  body += dRow('Travellers', who.map(x=>escapeHtml(travName(x))).join(', '));
+  body += dRow('Notes', it.notes ? escapeHtml(it.notes) : '');
+
+  const files = attachmentsFor(id);
+  if(files.length) body += dRow('Attached', files.map(a=>
+    `<span class="trav-pill" style="cursor:pointer;" onclick="viewAttachment('${a.id}')">\uD83D\uDCCE ${escapeHtml(a.label||'Document')}</span>`
+  ).join(' '));
+
+  document.getElementById('detail-body').innerHTML = body;
+  const edit = document.getElementById('detail-edit');
+  edit.style.display = canEdit() ? 'block' : 'none';
+  edit.onclick = ()=>{ closeModal('modal-detail'); openItemModal(id); };
+  document.getElementById('modal-detail').classList.add('active');
+}
+
+function openDocDetail(id){
+  const d = documents.find(x=>x.id===id);
+  if(!d) return;
+  const t = docType(d.doc_type);
+  const st = docDisplayStatus(d);
+  const f = docFields(d.doc_type);
+
+  let body = `<div class="dhead">
+    <span style="font-size:22px;">${t.ic}</span>
+    <div class="dt">
+      <h4>${escapeHtml(d.title || t.label)}</h4>
+      <div class="dsub">${escapeHtml(docWhoLabel(d))} \u00b7 ${escapeHtml(docScopeLabel(d))}</div>
+    </div>
+    <span class="stamp ${st.tone}">${st.label}</span>
+  </div>`;
+
+  body += dRow('Covers', docTravellerIds(d).map(x=>escapeHtml(travName(x))).join(', '));
+  if(f.issuer) body += dRow('Issued by', d.issuer ? escapeHtml(d.issuer) : '');
+  if(f.issue)  body += dRow('Issued', d.issue_date ? escapeHtml(fmtLongDate(d.issue_date)) : '');
+  if(f.expiry) body += dRow('Expires', d.expiry_date ? escapeHtml(fmtLongDate(d.expiry_date)) : '');
+  if(f.ref)    body += dRow('Reference', d.reference ? `<span class="when">${escapeHtml(d.reference)}</span>` : '');
+  if(f.last4)  body += dRow('Number', d.number_last4 ? '\u2022\u2022\u2022\u2022 ' + escapeHtml(d.number_last4) : '');
+  if(f.kept)   body += dRow('Original kept', d.kept_at ? escapeHtml(d.kept_at) : '');
+  body += dRow('Notes', d.notes ? escapeHtml(d.notes) : '');
+
+  if(d.storage_path) body += dRow('Copy', canSeeScan(d)
+    ? `<span class="trav-pill" style="cursor:pointer;" onclick="viewDocFile('${d.id}')">\uD83D\uDCCE View copy</span>`
+    : '<span style="color:var(--text-faint);font-size:12.5px;">On file. Only the holder, the head and the secretary can open it.</span>');
+
+  document.getElementById('detail-body').innerHTML = body;
+  const edit = document.getElementById('detail-edit');
+  edit.style.display = canEdit() ? 'block' : 'none';
+  edit.onclick = ()=>{ closeModal('modal-detail'); openDocModal(id); };
+  document.getElementById('modal-detail').classList.add('active');
 }
 
 /* ============================= FILE VIEWER ============================= */
