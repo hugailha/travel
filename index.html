@@ -362,6 +362,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     border-radius:12px;padding:12px;font-size:13px;color:var(--text-muted);cursor:pointer;}
   .attach-add:active{background:var(--surface-2);}
 
+  /* traveller pickers: who is on it first, adding is a second step */
+  .chip.add{border-style:dashed;color:var(--gold-ink);border-color:var(--gold);}
+  .chip .rm{margin-left:2px;color:var(--text-faint);font-size:14px;line-height:1;}
+  .picker-rest{width:100%;display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;
+    padding-top:9px;border-top:1px dashed var(--line-strong);}
+  .picker-empty{font-size:12.5px;color:var(--text-faint);align-self:center;}
+
   /* add controls that look pressable */
   .addbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gold);
     background:var(--gold-soft);color:var(--gold-ink);border-radius:20px;padding:6px 13px;
@@ -845,12 +852,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
           <input type="date" id="it-retdate">
           <input type="time" id="it-rettime">
         </div>
-        <div class="two-col">
+        <div class="two-col" style="margin-bottom:8px;">
           <div class="ac-wrap" style="flex:1;">
             <input type="text" id="it-retairline" placeholder="Return airline" autocomplete="off">
           </div>
           <input type="text" id="it-retno" placeholder="Number" style="flex:0 0 96px;">
         </div>
+        <input type="time" id="it-retarr" placeholder="Arrives">
         <p style="font-size:11.5px;color:var(--text-faint);margin:8px 0 0;line-height:1.5;"
            id="it-return-hint"></p>
       </div>
@@ -859,13 +867,17 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <label class="form-label">REFERENCE</label>
       <input type="text" id="it-ref" placeholder="QK7T2M" style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;">
     </div>
+    <div class="form-group" id="it-cabin-group" style="display:none;">
+      <label class="form-label">CABIN</label>
+      <div class="status-row" id="cabin-row"></div>
+    </div>
     <div class="form-group">
       <label class="form-label">STATUS</label>
       <div class="status-row" id="status-row"></div>
     </div>
     <div class="form-group">
       <label class="form-label">WHO IT'S FOR</label>
-      <div class="chip-row" id="who-row" style="margin:0;"></div>
+      <div class="chip-wrap" id="who-row"></div>
     </div>
     <div class="form-group">
       <label class="form-label">NOTES</label>
@@ -902,20 +914,20 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
       <select id="dc-trip"></select>
       <p style="font-size:11.5px;color:var(--text-faint);margin:7px 0 0;line-height:1.5;" id="dc-level-hint"></p>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="dc-title-group">
       <label class="form-label" id="dc-title-label">DESCRIPTION</label>
       <div class="ac-wrap"><input type="text" id="dc-title" placeholder="Schengen multi-entry" autocomplete="off"></div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="dc-issuer-group">
       <label class="form-label">ISSUED BY</label>
       <input type="text" id="dc-issuer" placeholder="France">
     </div>
-    <div class="two-col">
-      <div class="form-group" style="flex:1;">
+    <div class="two-col" id="dc-dates-row">
+      <div class="form-group" style="flex:1;" id="dc-issue-group">
         <label class="form-label">ISSUED</label>
         <input type="date" id="dc-issue">
       </div>
-      <div class="form-group" style="flex:1;">
+      <div class="form-group" style="flex:1;" id="dc-expiry-group">
         <label class="form-label">EXPIRES</label>
         <input type="date" id="dc-expiry">
       </div>
@@ -927,12 +939,16 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
          margin:8px 0 0;line-height:1.5;">Once an expiry date is set, the date decides the
          status. Application stages only apply while it is still being applied for.</p>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="dc-ref-group">
+      <label class="form-label" id="dc-ref-label">REFERENCE</label>
+      <input type="text" id="dc-ref" placeholder="PNR123" style="font-family:'IBM Plex Mono',ui-monospace,monospace;">
+    </div>
+    <div class="form-group" id="dc-last4-group">
       <label class="form-label">LAST 4 OF THE NUMBER</label>
       <input type="text" id="dc-last4" maxlength="4" placeholder="4821"
              style="font-family:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:0.2em;">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="dc-kept-group">
       <label class="form-label">WHERE THE ORIGINAL IS KEPT</label>
       <input type="text" id="dc-kept" placeholder="Home safe">
     </div>
@@ -1043,12 +1059,35 @@ const HELD_STATUS = [
   {id:'not_started', label:'Not arranged', tone:'idle'},
   {id:'approved',    label:'In hand',      tone:'ok'},
 ];
-function docStatusSet(t){ return t==='visa' ? VISA_STATUS : HELD_STATUS; }
+const TICKET_STATUS = [
+  {id:'confirmed', label:'Confirmed',    tone:'ok'},
+  {id:'waitlist',  label:'Waiting list', tone:'warn'},
+];
+function docStatusSet(t){
+  return t==='visa' ? VISA_STATUS : t==='ticket' ? TICKET_STATUS : HELD_STATUS;
+}
+/* A ticket has a PNR and a status. No issuer, no expiry, no number to
+   hide, so those fields stay out of the way. */
+const DOC_FIELDS = {
+  passport:  {title:1, issuer:1, issue:1, expiry:1, last4:1, kept:1, ref:0},
+  id:        {title:1, issuer:1, issue:1, expiry:1, last4:1, kept:1, ref:0},
+  visa:      {title:1, issuer:1, issue:1, expiry:1, last4:0, kept:0, ref:1},
+  insurance: {title:1, issuer:1, issue:0, expiry:1, last4:0, kept:0, ref:1},
+  ticket:    {title:1, issuer:0, issue:0, expiry:0, last4:0, kept:0, ref:1},
+  other:     {title:1, issuer:0, issue:0, expiry:1, last4:0, kept:0, ref:1},
+};
+function docFields(t){ return DOC_FIELDS[t] || DOC_FIELDS.other; }
 function docStatusInfo(d){
   const set = docStatusSet(d.doc_type);
   return set.find(x=>x.id===d.status) || set[0];
 }
 
+const CABINS = [
+  {id:'economy',  label:'Economy'},
+  {id:'premium',  label:'Premium'},
+  {id:'business', label:'Business'},
+  {id:'first',    label:'First'},
+];
 const BOOK_STATUS = [
   {id:'confirmed', label:'Confirmed', tone:'ok'},
   {id:'pending',   label:'Not booked', tone:'warn'},
@@ -1099,6 +1138,8 @@ function docWhoLabel(d){
   return ids.map(id=>firstName(travName(id))).join(' & ');
 }
 let itemAirlineCode = '', itemFromCode = '', itemToCode = '', itemRetAirlineCode = '';
+let itemCabin = '';
+let whoAddOpen = false, tripAddOpen = false, docAddOpen = false;
 let tripVisaPolicy = 'unknown';
 let tripVisaOverrides = {};   // travellerId -> true/false, overriding the trip
 let nuIndex = 0;
@@ -1184,7 +1225,7 @@ function legsOf(i){
     out.push({ ...i, _leg:'ret',
       start_date: i.return_date,
       start_time: i.return_time || null,
-      end_date: null, end_time: null,
+      end_date: null, end_time: i.return_end_time || null,
       flight_number: i.return_flight_number || null,
       airline_code: i.return_airline_code || i.airline_code,
       from_place: i.to_place, to_place: i.from_place,
@@ -2132,7 +2173,8 @@ function itemRowHtml(it){
         carrier ? `<span class="carrier">${escapeHtml(carrier)}</span> ` : ''}${
         escapeHtml(legTitle(it))}${
         it._leg==='ret' ? '<span class="leg-tag">RETURN</span>'
-        : (it.return_date ? '<span class="leg-tag">OUTBOUND</span>' : '')}</div>
+        : (it.return_date ? '<span class="leg-tag">OUTBOUND</span>' : '')}${
+        it.cabin ? `<span class="leg-tag">${escapeHtml(cabinLabel(it.cabin).toUpperCase())}</span>` : ''}</div>
       ${bits.filter(Boolean).length ? `<div class="meta">${bits.filter(Boolean).join(' &middot; ')}</div>` : ''}
       ${flightStatusUrl(it) ? `<button class="linkbtn" onclick="event.stopPropagation();openFlightStatus('${it.id}','${it._leg||'out'}')">CHECK FLIGHT STATUS &rarr;</button>` : ''}
     </div>
@@ -2161,6 +2203,7 @@ function addDays(iso, k){
    for, and disappear once it has been issued. */
 function docDisplayStatus(d){
   const t = docType(d.doc_type);
+  if(d.doc_type === 'ticket') return docStatusInfo(d);   // no expiry to reason about
   if(d.status === 'rejected') return { label:'Rejected', tone:'bad' };
   if(t.person || d.expiry_date){
     if(!d.expiry_date) return { label:'No expiry recorded', tone:'idle' };
@@ -2192,6 +2235,7 @@ function docCardHtml(d, hideTrip){
   if(d.issuer)      meta.push(escapeHtml(d.issuer));
   if(d.expiry_date && !/^(Valid to|Expires)/.test(st.label))
     meta.push(fmtShort(d.expiry_date) + ' ' + (d0(d.expiry_date)||new Date()).getFullYear());
+  if(d.reference) meta.push(escapeHtml(d.reference));
   if(d.number_last4) meta.push('\u2022\u2022\u2022\u2022 ' + escapeHtml(d.number_last4));
   if(d.kept_at)     meta.push(escapeHtml(d.kept_at));
 
@@ -2456,6 +2500,7 @@ function openTripModal(id){
   tripTravSel = t ? travellersOn(t.id).map(x=>x.id) : [];
   tripVisaPolicy = t?.visa_policy || 'unknown';
   tripVisaOverrides = {};
+  tripAddOpen = false;
   if(t) tripRoster.filter(r=>r.trip_id===t.id).forEach(r=>{
     if(r.visa_required === true || r.visa_required === false)
       tripVisaOverrides[r.traveller_id] = r.visa_required;
@@ -2468,25 +2513,20 @@ function openTripModal(id){
 
 function buildTripTravellers(){
   const wrap = document.getElementById('tp-travellers');
-  wrap.innerHTML = '';
   if(!travellers.length){
-    wrap.innerHTML = '<span style="font-size:12.5px;color:var(--text-faint);">No travellers on the roster yet.</span>';
+    wrap.innerHTML = '<span class="picker-empty">No travellers on the roster yet.</span>';
     return;
   }
-  travellers.forEach(t=>{
-    const on = tripTravSel.includes(t.id);
-    const c = document.createElement('div');
-    c.className = 'chip' + (on ? ' active' : '');
-    c.innerHTML = `<span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}`;
-    c.onclick = ()=>{
-      tripTravSel = on ? tripTravSel.filter(x=>x!==t.id) : [...tripTravSel, t.id];
-      buildTripTravellers();
-    };
-    wrap.appendChild(c);
-  });
+  wrap.innerHTML = pickerHtml(travellers, tripTravSel, tripAddOpen,
+    { remove:'removeTripTrav', add:'addTripTrav', toggle:'toggleTripAdd', all:'addAllTripTrav' },
+    'Nobody going yet');
   buildVisaOverrides();
   showPaperworkWarning();
 }
+function removeTripTrav(id){ tripTravSel = tripTravSel.filter(x=>x!==id); buildTripTravellers(); }
+function addTripTrav(id){ if(!tripTravSel.includes(id)) tripTravSel.push(id); buildTripTravellers(); }
+function addAllTripTrav(){ tripTravSel = travellers.map(t=>t.id); tripAddOpen = false; buildTripTravellers(); }
+function toggleTripAdd(){ tripAddOpen = !tripAddOpen; buildTripTravellers(); }
 
 /* Flags travellers whose paperwork will not cover the dates in the form. */
 function paperworkGap(travId, endDate, needVisa){
@@ -2657,6 +2697,9 @@ function setKind(id){
   document.getElementById('it-carrier-label').textContent =
     isFlight ? 'AIRLINE & FLIGHT NUMBER' : 'OPERATOR & SERVICE NUMBER';
   document.getElementById('it-flightno').placeholder = isFlight ? '801' : 'TGV 9260';
+  document.getElementById('it-cabin-group').style.display =
+    (isFlight || id === 'train') ? 'block' : 'none';
+  buildCabinRow();
   document.getElementById('it-route-group').style.display = k.route ? 'block' : 'none';
   document.getElementById('it-return-group').style.display = isFlight ? 'block' : 'none';
   if(!isFlight) setReturnOn(false);
@@ -2670,6 +2713,19 @@ function setKind(id){
   if(!set.some(s=>s.id===itemStatus)) itemStatus = set[0].id;
   buildStatusRow();
 }
+function buildCabinRow(){
+  const row = document.getElementById('cabin-row');
+  row.innerHTML = '';
+  CABINS.forEach(c=>{
+    const b = document.createElement('div');
+    b.className = 'status-btn' + (itemCabin===c.id ? ' on-idle' : '');
+    b.textContent = c.label;
+    b.onclick = ()=>{ itemCabin = (itemCabin===c.id ? '' : c.id); buildCabinRow(); };
+    row.appendChild(b);
+  });
+}
+function cabinLabel(id){ const c = CABINS.find(x=>x.id===id); return c ? c.label : ''; }
+
 function buildStatusRow(){
   const row = document.getElementById('status-row');
   row.innerHTML = '';
@@ -2681,33 +2737,47 @@ function buildStatusRow(){
     row.appendChild(b);
   });
 }
+/* Show who is actually on it. Everyone else is one tap away, so a stray
+   touch cannot quietly add someone who is not travelling. */
+function travChip(t, selected, onclick, extra){
+  return `<div class="chip${selected ? ' active' : ''}${extra||''}" onclick="${onclick}">
+    <span class="dot" style="background:${t.color||'#858d9c'};width:9px;height:9px;"></span>
+    ${escapeHtml(firstName(t.name))}${t.kind && t.kind!=='family' ? ` <span class="tag">${escapeHtml(t.kind)}</span>` : ''}
+    ${selected ? '<span class="rm">&times;</span>' : ''}</div>`;
+}
+function pickerHtml(all, chosenIds, open, fns, emptyText){
+  const chosen = all.filter(t=>chosenIds.includes(t.id));
+  const rest   = all.filter(t=>!chosenIds.includes(t.id));
+  let html = chosen.map(t=>travChip(t, true, `${fns.remove}('${t.id}')`)).join('');
+  if(!chosen.length) html += `<span class="picker-empty">${escapeHtml(emptyText)}</span>`;
+  if(rest.length){
+    html += `<div class="chip add" onclick="${fns.toggle}()">${open ? 'Done' : '+ Add someone'}</div>`;
+    if(open) html += `<div class="picker-rest">${
+      rest.map(t=>travChip(t, false, `${fns.add}('${t.id}')`)).join('')}${
+      rest.length > 1 ? `<div class="chip" onclick="${fns.all}()">Add everyone</div>` : ''}</div>`;
+  }
+  return html;
+}
+
 function buildWhoRow(){
   const row = document.getElementById('who-row');
-  row.innerHTML = '';
-  const tripId = document.getElementById('it-trip').value;
-  const onTrip = travellersOn(tripId);
+  const onTrip = travellersOn(document.getElementById('it-trip').value);
   if(!onTrip.length){
-    row.innerHTML = '<span style="font-size:12.5px;color:var(--text-faint);">Add travellers to this trip first.</span>';
+    row.innerHTML = '<span class="picker-empty">Add travellers to this trip first.</span>';
     return;
   }
   itemWho = itemWho.filter(id=>onTrip.some(t=>t.id===id));
-  const all = document.createElement('div');
-  all.className = 'chip' + (itemWho.length===onTrip.length ? ' active' : '');
-  all.textContent = 'Everyone';
-  all.onclick = ()=>{ itemWho = onTrip.map(t=>t.id); buildWhoRow(); };
-  row.appendChild(all);
-  onTrip.forEach(t=>{
-    const on = itemWho.includes(t.id);
-    const c = document.createElement('div');
-    c.className = 'chip' + (on && itemWho.length!==onTrip.length ? ' active' : '');
-    c.innerHTML = `<span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>${escapeHtml(firstName(t.name))}`;
-    c.onclick = ()=>{
-      itemWho = on ? itemWho.filter(x=>x!==t.id) : [...itemWho, t.id];
-      buildWhoRow();
-    };
-    row.appendChild(c);
-  });
+  row.innerHTML = pickerHtml(onTrip, itemWho, whoAddOpen,
+    { remove:'removeItemWho', add:'addItemWho', toggle:'toggleWhoAdd', all:'addAllItemWho' },
+    'Nobody selected yet');
 }
+function removeItemWho(id){ itemWho = itemWho.filter(x=>x!==id); buildWhoRow(); }
+function addItemWho(id){ if(!itemWho.includes(id)) itemWho.push(id); buildWhoRow(); }
+function addAllItemWho(){
+  itemWho = travellersOn(document.getElementById('it-trip').value).map(t=>t.id);
+  whoAddOpen = false; buildWhoRow();
+}
+function toggleWhoAdd(){ whoAddOpen = !whoAddOpen; buildWhoRow(); }
 function openItemModal(id, presetTripId){
   if(!canEdit()) return;
   editingItemId = id;
@@ -2725,11 +2795,14 @@ function openItemModal(id, presetTripId){
   itemWho = it ? (it.member_ids||[]).slice() : onTrip.slice();
   if(itemWho.length===0) itemWho = onTrip.slice();
   pendingFiles = [];
+  whoAddOpen = false;
 
   setReturnOn(!!it?.return_date);
   document.getElementById('it-retdate').value = it?.return_date || '';
   document.getElementById('it-rettime').value = fmtTime(it?.return_time) || '';
   document.getElementById('it-retno').value = it?.return_flight_number || '';
+  document.getElementById('it-retarr').value = fmtTime(it?.return_end_time) || '';
+  itemCabin = it?.cabin || '';
   itemAirlineCode = it?.airline_code || '';
   itemFromCode = it?.from_code || '';
   itemToCode = it?.to_code || '';
@@ -2794,6 +2867,8 @@ async function saveItem(){
     return_flight_number: (isFlight && returnOn)
       ? (document.getElementById('it-retno').value.trim() || null) : null,
     return_airline_code: (isFlight && returnOn) ? (itemRetAirlineCode || itemAirlineCode || null) : null,
+    return_end_time: (isFlight && returnOn) ? (document.getElementById('it-retarr').value || null) : null,
+    cabin: (isFlight || itemKind === 'train') ? (itemCabin || null) : null,
     operator: (itemKind === 'train' || itemKind === 'car')
       ? (document.getElementById('it-operator').value.trim() || null) : null,
     from_code: itemFromCode || codeFromText(document.getElementById('it-from').value) || null,
@@ -2856,6 +2931,23 @@ function setDocTypeSel(id){
 
   document.getElementById('dc-file-group').style.display   = t.file ? 'block' : 'none';
   document.getElementById('dc-nofile-note').style.display  = t.file ? 'none' : 'block';
+
+  const f = docFields(id);
+  const show = (gid, on) => { const el = document.getElementById(gid); if(el) el.style.display = on ? 'block' : 'none'; };
+  show('dc-title-group',  f.title);
+  show('dc-issuer-group', f.issuer);
+  show('dc-issue-group',  f.issue);
+  show('dc-expiry-group', f.expiry);
+  show('dc-last4-group',  f.last4);
+  show('dc-kept-group',   f.kept);
+  show('dc-ref-group',    f.ref);
+  const dates = document.getElementById('dc-dates-row');
+  if(dates) dates.style.display = (f.issue || f.expiry) ? 'flex' : 'none';
+  document.getElementById('dc-ref-label').textContent =
+    id === 'ticket' ? 'BOOKING REFERENCE (PNR)'
+    : id === 'insurance' ? 'POLICY NUMBER' : 'REFERENCE';
+  document.getElementById('dc-ref').placeholder =
+    id === 'ticket' ? 'QK7T2M' : id === 'insurance' ? 'POL-889210' : '';
   updateDocStatusVisibility();
   document.getElementById('dc-title-label').textContent =
     t.person ? 'DESCRIPTION' : 'WHICH DOCUMENT';
@@ -2865,14 +2957,14 @@ function setDocTypeSel(id){
 
   if(t.person) document.getElementById('dc-trip').value = '';
   const set = docStatusSet(id);
-  if(!set.some(x=>x.id===docStatus_)) docStatus_ = set[0].id;
+  if(!set.some(x=>x.id===docStatus_)) docStatus_ = id === 'ticket' ? 'confirmed' : set[0].id;
   buildDocStatusRow();
   updateDocLevelHint();
   renderDocFileList();
 }
 function updateDocStatusVisibility(){
   const t = docType(docType_);
-  const hasExpiry = !!document.getElementById('dc-expiry').value;
+  const hasExpiry = !!document.getElementById('dc-expiry').value && docFields(docType_).expiry;
   const row = document.getElementById('doc-status-row').parentElement;
   row.style.display = (t.person || hasExpiry) ? 'none' : 'block';
   const note = document.getElementById('dc-status-note');
@@ -2912,6 +3004,7 @@ function openDocModal(id, presetTripId){
   document.getElementById('doc-modal-title').textContent = d ? 'Edit document' : 'Add a document';
 
   docWho = d ? docTravellerIds(d).slice() : [];
+  docAddOpen = false;
 
   const trsel = document.getElementById('dc-trip');
   trsel.innerHTML = `<option value="">The person (all trips)</option>` +
@@ -2928,6 +3021,7 @@ function openDocModal(id, presetTripId){
   document.getElementById('dc-last4').value  = d?.number_last4 || '';
   document.getElementById('dc-kept').value   = d?.kept_at || '';
   document.getElementById('dc-notes').value  = d?.notes || '';
+  document.getElementById('dc-ref').value    = d?.reference || '';
   document.getElementById('dc-delete').style.display = d ? 'block' : 'none';
 
   docType_   = d?.doc_type || 'visa';
@@ -2942,13 +3036,14 @@ function buildDocWho(){
   const wrap = document.getElementById('dc-travellers');
   const multi = docIsShareable(docType_);
   if(!multi && docWho.length > 1) docWho = docWho.slice(0,1);
-  wrap.innerHTML = travellers.map(t=>{
-    const on = docWho.includes(t.id);
-    return `<div class="chip${on?' active':''}" onclick="toggleDocWho('${t.id}')">
-      <span class="dot" style="background:${t.color||'#6b7280'}">${initials(t.name)}</span>
-      ${escapeHtml(firstName(t.name))}</div>`;
-  }).join('') + (multi && travellers.length > 1
-    ? `<div class="chip" onclick="docWho=travellers.map(t=>t.id);buildDocWho();">Everyone</div>` : '');
+  if(multi){
+    wrap.innerHTML = pickerHtml(travellers, docWho, docAddOpen,
+      { remove:'removeDocWho', add:'addDocWho', toggle:'toggleDocAdd', all:'addAllDocWho' },
+      'Nobody selected yet');
+  } else {
+    // one person only, so a plain list reads better than an add step
+    wrap.innerHTML = travellers.map(t=>travChip(t, docWho.includes(t.id), `toggleDocWho('${t.id}')`)).join('');
+  }
   document.getElementById('dc-who-hint').textContent = multi
     ? 'One policy can cover several people. Tick everyone it applies to.'
     : 'Passports and visas belong to one person.';
@@ -2968,6 +3063,10 @@ function toggleDocWho(id){
     docWho = [id];
   buildDocWho();
 }
+function removeDocWho(id){ docWho = docWho.filter(x=>x!==id); buildDocWho(); }
+function addDocWho(id){ if(!docWho.includes(id)) docWho.push(id); buildDocWho(); }
+function addAllDocWho(){ docWho = travellers.map(t=>t.id); docAddOpen = false; buildDocWho(); }
+function toggleDocAdd(){ docAddOpen = !docAddOpen; buildDocWho(); }
 
 function renderDocFileList(){
   const wrap = document.getElementById('dc-file-list');
@@ -3016,7 +3115,8 @@ async function saveDoc(){
     issue_date: document.getElementById('dc-issue').value || null,
     expiry_date: document.getElementById('dc-expiry').value || null,
     number_last4: (document.getElementById('dc-last4').value.trim() || null),
-    kept_at: document.getElementById('dc-kept').value.trim() || null,
+    kept_at: docFields(docType_).kept ? (document.getElementById('dc-kept').value.trim() || null) : null,
+    reference: docFields(docType_).ref ? (document.getElementById('dc-ref').value.trim() || null) : null,
     notes: document.getElementById('dc-notes').value.trim() || null,
     status: t.person ? 'approved' : docStatus_,
   };
