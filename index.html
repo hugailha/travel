@@ -2286,7 +2286,7 @@ function stopSummary(it){
     const flag = lo.changeAirport ? ' \u2014 airport change'
                : lo.tight ? ' \u2014 tight' : '';
     parts.push(`<span style="${lo.tight || lo.changeAirport ? 'color:var(--coral);font-weight:600;' : ''}">${
-      '<span class="tlabel">Transit</span> '}${escapeHtml(fmtDuration(lo.mins))} in ${escapeHtml(where)}${flag}</span>`);
+      '<span class="tlabel">Transit time</span> '}${escapeHtml(fmtDuration(lo.mins))} in ${escapeHtml(where)}${flag}</span>`);
   }
   return parts.join(', ');
 }
@@ -2319,7 +2319,7 @@ function legsHtml(it){
       const lo = layoverInfo(sg, next);
       html += `<div class="layover ${lo.tight || lo.changeAirport ? 'tight' : ''}">
         <span class="bar"></span>
-        <span><span class="tlabel">Transit</span> ${fmtDuration(lo.mins)} in ${escapeHtml(sg.to_place || sg.to_code || 'transit')}</span>
+        <span><span class="tlabel">Transit time</span> ${fmtDuration(lo.mins)} in ${escapeHtml(sg.to_place || sg.to_code || 'transit')}</span>
         ${lo.tight ? '<span class="flag">TIGHT</span>' : ''}
         ${lo.changeAirport ? `<span class="flag">CHANGE TO ${escapeHtml(next.from_code || '?')}</span>` : ''}
       </div>`;
@@ -3935,13 +3935,13 @@ function updateSegLayovers(){
       if(!el || !next) return;
       if(!sg.arr_time || !next.dep_time){
         el.className = 'layover';
-        el.innerHTML = `<span class="bar"></span><span style="opacity:0.7;">Add both times to see the wait</span>`;
+        el.innerHTML = `<span class="bar"></span><span class="tlabel">Transit time</span><span style="opacity:0.7;">&nbsp;add both times</span>`;
         return;
       }
       const lo = layoverInfo(sg, next);
       el.className = 'layover' + (lo.tight || lo.changeAirport ? ' tight' : '');
       el.innerHTML = `<span class="bar"></span>
-        <span><span class="tlabel">Transit</span> ${escapeHtml(fmtDuration(lo.mins))} in ${escapeHtml(sg.to_place || sg.to_code || 'transit')}</span>
+        <span><span class="tlabel">Transit time</span> ${escapeHtml(fmtDuration(lo.mins))} in ${escapeHtml(sg.to_place || sg.to_code || 'transit')}</span>
         ${lo.tight ? '<span class="flag">TIGHT</span>' : ''}
         ${lo.changeAirport ? `<span class="flag">CHANGE TO ${escapeHtml(next.from_code || '?')}</span>` : ''}`;
     });
